@@ -558,6 +558,19 @@ input { font-family: inherit; }
     visualNotify = false;
   }
 
+  // Auto-reload in dev mode (polls every 2s, reloads if server restarts)
+  if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+    let lastCheck = Date.now();
+    setInterval(function() {
+      fetch('/api/info').then(function(r) {
+        if (!r.ok) location.reload();
+      }).catch(function() {
+        // Server down, wait and reload when back
+        setTimeout(function() { location.reload(); }, 1000);
+      });
+    }, 3000);
+  }
+
   // Init
   applyTranslations();
   initTheme();

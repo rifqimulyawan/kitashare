@@ -30,7 +30,27 @@ pub struct ServerState {
     pub fps: u32,
 }
 
+#[cfg(not(debug_assertions))]
 pub static VIEWER_HTML: &str = include_str!("../resources/viewer/index.html");
+
+#[cfg(debug_assertions)]
+fn get_viewer_path() -> std::path::PathBuf {
+    let mut path = std::env::current_dir().unwrap_or_default();
+    // Walk up to find src-tauri/resources/viewer/index.html
+    for _ in 0..5 {
+        let candidate = path.join("resources").join("viewer").join("index.html");
+        if candidate.exists() {
+            return candidate;
+        }
+        if !path.pop() {
+            break;
+        }
+    }
+    // Fallback: try relative to CARGO_MANIFEST_DIR
+    let manifest = env!("CARGO_MANIFEST_DIR");
+    std::path::PathBuf::from(manifest)
+        .join("resources").join("viewer").join("index.html")
+}
 
 pub async fn start_server(port: u16, state: Arc<ServerState>) -> Result<tokio::task::JoinHandle<()>, String> {
     let app = Router::new()
@@ -52,8 +72,24 @@ pub async fn start_server(port: u16, state: Arc<ServerState>) -> Result<tokio::t
     Ok(handle)
 }
 
+#[cfg(not(debug_assertions))]
 async fn viewer_handler() -> Html<&'static str> {
     Html(VIEWER_HTML)
+}
+
+#[cfg(debug_assertions)]
+async fn viewer_handler() -> Html<String> {
+    let path = get_viewer_path();
+    match std::fs::read_to_string(&path) {
+        Ok(html) => Html(html),
+        Err(e) => {
+            eprintln!("Failed to read viewer from {:?}: {}", path, e);
+            Html(format!(
+                "<html><body><h2>Viewer file not found</h2><p>Path: {}</p><p>Error: {}</p></body></html>",
+                path.display(), e
+            ))
+        }
+    }
 }
 
 async fn info_handler(State(state): State<Arc<ServerState>>) -> axum::Json<serde_json::Value> {
