@@ -2,8 +2,10 @@
 <html lang="en" dir="ltr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
 <meta name="theme-color" content="#1e40af">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>YourShare Viewer</title>
 <style>
 :root {
@@ -15,11 +17,16 @@
   --text-muted: #94a3b8;
   --primary: #3b82f6;
   --primary-hover: #2563eb;
+  --primary-light: rgba(59,130,246,0.15);
   --success: #22c55e;
   --warning: #f59e0b;
   --destructive: #ef4444;
   --radius: 12px;
   --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 [data-theme="light"] {
   --bg: #f8fafc;
@@ -30,59 +37,107 @@
   --text-muted: #64748b;
   --primary: #2563eb;
   --primary-hover: #1d4ed8;
+  --primary-light: rgba(37,99,235,0.1);
 }
-* { margin: 0; padding: 0; box-sizing: border-box; }
-html, body { height: 100%; overflow: hidden; }
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
 body {
   font-family: var(--font);
   background: var(--bg);
   color: var(--text);
   display: flex;
   flex-direction: column;
-  transition: background 0.2s, color 0.2s;
+  transition: background 0.3s var(--ease), color 0.3s var(--ease);
+  user-select: none;
+  -webkit-user-select: none;
 }
 button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
 input { font-family: inherit; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
 
 /* Skip link */
 .skip-link {
   position: absolute; top: -40px; left: 8px; z-index: 1000;
   background: var(--primary); color: #fff; padding: 8px 16px;
   border-radius: 8px; font-size: 14px; font-weight: 600;
-  transition: top 0.2s;
+  transition: top 0.2s var(--ease);
 }
 .skip-link:focus { top: 8px; }
 
 /* Top bar */
 .topbar {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 12px 20px; background: var(--surface);
+  padding: calc(12px + var(--safe-top)) 20px 12px; background: var(--surface);
   border-bottom: 1px solid var(--border); flex-shrink: 0;
-  min-height: 56px;
+  min-height: calc(56px + var(--safe-top));
+  transition: background 0.3s var(--ease), border-color 0.3s var(--ease);
 }
 .topbar-left { display: flex; align-items: center; gap: 12px; }
 .logo { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 18px; }
-.logo svg { width: 24px; height: 24px; color: var(--primary); }
+.logo svg { width: 24px; height: 24px; color: var(--primary); transition: transform 0.3s var(--ease-bounce); }
+.logo:hover svg { transform: scale(1.15) rotate(-5deg); }
 .topbar-right { display: flex; align-items: center; gap: 8px; }
 .status-badge {
   display: flex; align-items: center; gap: 6px;
   padding: 6px 12px; border-radius: 20px; font-size: 13px; font-weight: 600;
+  transition: all 0.3s var(--ease);
 }
 .status-badge.connected { background: rgba(34,197,94,0.15); color: var(--success); }
 .status-badge.disconnected { background: rgba(239,68,68,0.15); color: var(--destructive); }
 .status-badge.connecting { background: rgba(245,158,11,0.15); color: var(--warning); }
 .status-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
 .status-badge.connected .status-dot { animation: pulse 2s infinite; }
-@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+.status-badge.connecting .status-dot { animation: pulse 0.8s infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.8); } }
 
+/* Quality indicator */
+.quality-indicator {
+  display: flex; align-items: center; gap: 4px; padding: 4px 10px;
+  border-radius: 20px; font-size: 11px; font-weight: 700;
+  background: var(--surface-2); color: var(--text-muted);
+  transition: all 0.3s var(--ease);
+}
+.quality-indicator.excellent { color: var(--success); }
+.quality-indicator.good { color: var(--success); }
+.quality-indicator.fair { color: var(--warning); }
+.quality-indicator.poor { color: var(--destructive); }
+.quality-bars { display: flex; gap: 2px; align-items: flex-end; }
+.quality-bar { width: 3px; border-radius: 1px; background: currentColor; opacity: 0.3; }
+.quality-bar.active { opacity: 1; }
+.quality-bar:nth-child(1) { height: 4px; }
+.quality-bar:nth-child(2) { height: 7px; }
+.quality-bar:nth-child(3) { height: 10px; }
+.quality-bar:nth-child(4) { height: 13px; }
+
+/* Icon buttons */
 .icon-btn {
   width: 40px; height: 40px; border-radius: 10px;
   display: flex; align-items: center; justify-content: center;
-  transition: background 0.15s; color: var(--text-muted);
+  transition: background 0.15s var(--ease), transform 0.1s var(--ease); color: var(--text-muted);
+  position: relative;
 }
 .icon-btn:hover { background: var(--surface-2); color: var(--text); }
+.icon-btn:active { transform: scale(0.9); }
 .icon-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
-.icon-btn svg { width: 20px; height: 20px; }
+.icon-btn svg { width: 20px; height: 20px; transition: transform 0.3s var(--ease); }
+
+/* Unread badge */
+.unread-badge {
+  position: absolute; top: 4px; right: 4px;
+  min-width: 18px; height: 18px; border-radius: 9px;
+  background: var(--destructive); color: #fff;
+  font-size: 10px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0 5px; transform: scale(0);
+  transition: transform 0.3s var(--ease-bounce);
+  pointer-events: none;
+}
+.unread-badge.visible { transform: scale(1); }
 
 /* Main area */
 .main-area {
@@ -91,15 +146,24 @@ input { font-family: inherit; }
 .video-container {
   flex: 1; display: flex; align-items: center; justify-content: center;
   background: #000; position: relative; overflow: hidden;
+  cursor: pointer;
 }
 #stream-canvas {
   max-width: 100%; max-height: 100%; object-fit: contain;
+  transition: opacity 0.3s var(--ease);
 }
+#stream-canvas.fade-in { animation: fadeIn 0.4s var(--ease); }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* Loading overlay */
 .loading-overlay {
   position: absolute; inset: 0; display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 16px;
   background: rgba(0,0,0,0.7); color: #fff;
+  opacity: 1; transition: opacity 0.3s var(--ease);
+  backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
 }
+.loading-overlay.hidden { opacity: 0; pointer-events: none; }
 .spinner {
   width: 48px; height: 48px; border: 4px solid rgba(255,255,255,0.2);
   border-top-color: var(--primary); border-radius: 50%;
@@ -107,96 +171,209 @@ input { font-family: inherit; }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+/* FPS overlay */
+.fps-overlay {
+  position: absolute; top: 12px; left: 12px;
+  padding: 4px 10px; border-radius: 8px;
+  background: rgba(0,0,0,0.6); color: #fff;
+  font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums;
+  opacity: 0; transition: opacity 0.3s var(--ease);
+  pointer-events: none; z-index: 5;
+}
+.fps-overlay.visible { opacity: 1; }
+
+/* Chat backdrop (mobile) */
+.chat-backdrop {
+  position: absolute; inset: 0; background: rgba(0,0,0,0.5);
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.3s var(--ease); z-index: 9;
+}
+.chat-backdrop.visible { opacity: 1; pointer-events: auto; }
+
 /* Chat panel */
 .chat-panel {
   width: 340px; max-width: 100%; background: var(--surface);
   border-left: 1px solid var(--border); display: flex; flex-direction: column;
-  transition: transform 0.2s; flex-shrink: 0;
+  transition: transform 0.3s var(--ease), background 0.3s var(--ease);
+  flex-shrink: 0; z-index: 10;
 }
 .chat-panel.hidden { transform: translateX(100%); position: absolute; right: 0; top: 0; bottom: 0; }
 .chat-header {
   padding: 12px 16px; border-bottom: 1px solid var(--border);
   display: flex; align-items: center; justify-content: space-between;
   font-weight: 600; font-size: 15px;
+  transition: border-color 0.3s var(--ease);
 }
 .chat-messages {
-  flex: 1; overflow-y: auto; padding: 12px 16px; display: flex; flex-direction: column; gap: 8px;
+  flex: 1; overflow-y: auto; padding: 12px 16px;
+  display: flex; flex-direction: column; gap: 8px;
+  scroll-behavior: smooth;
 }
 .chat-msg {
   max-width: 85%; padding: 8px 12px; border-radius: 12px;
   font-size: 14px; line-height: 1.4; word-wrap: break-word;
+  animation: slideIn 0.3s var(--ease-bounce);
+  transform-origin: bottom;
 }
-.chat-msg.other { background: var(--surface-2); align-self: flex-start; }
-.chat-msg.self { background: var(--primary); color: #fff; align-self: flex-end; }
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.chat-msg.other { background: var(--surface-2); align-self: flex-start; border-bottom-left-radius: 4px; }
+.chat-msg.self { background: var(--primary); color: #fff; align-self: flex-end; border-bottom-right-radius: 4px; }
 .chat-msg .chat-user { font-size: 11px; font-weight: 700; opacity: 0.7; margin-bottom: 2px; }
 .chat-msg .chat-time { font-size: 10px; opacity: 0.5; margin-top: 2px; }
+.chat-empty {
+  text-align: center; color: var(--text-muted); font-size: 13px;
+  padding: 24px 16px; opacity: 0.6;
+}
 .chat-input-area {
   padding: 12px; border-top: 1px solid var(--border); display: flex; gap: 8px;
+  transition: border-color 0.3s var(--ease);
 }
 .chat-input {
   flex: 1; padding: 10px 14px; border-radius: 10px;
   border: 1px solid var(--border); background: var(--bg); color: var(--text);
-  font-size: 14px; outline: none; transition: border 0.15s;
+  font-size: 14px; outline: none; transition: border 0.2s var(--ease), box-shadow 0.2s var(--ease);
 }
-.chat-input:focus { border-color: var(--primary); }
-.chat-input:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+.chat-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-light); }
+.chat-input:focus-visible { outline: none; }
 .chat-send {
   padding: 10px 16px; border-radius: 10px; background: var(--primary);
-  color: #fff; font-weight: 600; font-size: 14px; transition: background 0.15s;
+  color: #fff; font-weight: 600; font-size: 14px;
+  transition: background 0.15s var(--ease), transform 0.1s var(--ease);
 }
 .chat-send:hover { background: var(--primary-hover); }
+.chat-send:active { transform: scale(0.95); }
 .chat-send:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 .chat-send:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* Controls bar */
 .controls-bar {
   display: flex; align-items: center; justify-content: center; gap: 8px;
-  padding: 10px 20px; background: var(--surface);
+  padding: 10px 20px calc(10px + var(--safe-bottom)); background: var(--surface);
   border-top: 1px solid var(--border); flex-shrink: 0;
+  transition: background 0.3s var(--ease), border-color 0.3s var(--ease);
 }
 .control-btn {
   display: flex; align-items: center; gap: 6px;
   padding: 8px 14px; border-radius: 10px; font-size: 13px; font-weight: 600;
-  background: var(--surface-2); color: var(--text); transition: background 0.15s;
+  background: var(--surface-2); color: var(--text);
+  transition: background 0.15s var(--ease), transform 0.1s var(--ease);
+  position: relative; overflow: hidden;
 }
 .control-btn:hover { background: var(--border); }
+.control-btn:active { transform: scale(0.95); }
 .control-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
-.control-btn svg { width: 18px; height: 18px; }
+.control-btn svg { width: 18px; height: 18px; transition: transform 0.3s var(--ease); }
 .control-btn.active { background: var(--primary); color: #fff; }
+.control-btn.active svg { transform: scale(1.1); }
 
-/* Join screen */
-.join-screen {
-  flex: 1; display: flex; flex-direction: column;
-  align-items: center; justify-content: center; padding: 20px; gap: 24px;
+/* Ripple effect */
+.ripple {
+  position: absolute; border-radius: 50%; background: rgba(255,255,255,0.3);
+  pointer-events: none; transform: scale(0);
+  animation: rippleAnim 0.6s var(--ease);
 }
-.join-card {
+@keyframes rippleAnim { to { transform: scale(4); opacity: 0; } }
+
+/* Toast */
+.toast-container {
+  position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+  z-index: 200; display: flex; flex-direction: column; gap: 8px;
+  pointer-events: none; padding-bottom: var(--safe-bottom);
+}
+.toast {
+  padding: 12px 20px; border-radius: 12px;
   background: var(--surface); border: 1px solid var(--border);
-  border-radius: 20px; padding: 40px; max-width: 420px; width: 100%;
-  text-align: center;
+  color: var(--text); font-size: 14px; font-weight: 500;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  display: flex; align-items: center; gap: 8px;
+  animation: toastIn 0.3s var(--ease-bounce);
+  max-width: 320px;
 }
-.join-card h1 { font-size: 28px; margin-bottom: 8px; }
-.join-card p { color: var(--text-muted); font-size: 15px; margin-bottom: 24px; }
-.join-btn {
-  width: 100%; padding: 14px; border-radius: 12px;
-  background: var(--primary); color: #fff; font-size: 16px; font-weight: 700;
-  transition: background 0.15s;
-}
-.join-btn:hover { background: var(--primary-hover); }
-.join-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
-.join-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.toast.success { border-color: var(--success); }
+.toast.success svg { color: var(--success); }
+.toast.removing { animation: toastOut 0.3s var(--ease) forwards; }
+@keyframes toastIn { from { opacity: 0; transform: translateY(20px) scale(0.9); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes toastOut { to { opacity: 0; transform: translateY(20px) scale(0.9); } }
 
-/* Responsive */
+/* A11y panel */
+.a11y-panel {
+  position: fixed; bottom: 70px; right: 20px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 16px; padding: 20px; z-index: 100; min-width: 260px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  transform: translateY(20px) scale(0.95); opacity: 0; pointer-events: none;
+  transition: all 0.3s var(--ease-bounce);
+}
+.a11y-panel.visible { transform: translateY(0) scale(1); opacity: 1; pointer-events: auto; }
+.a11y-panel h3 { font-size: 16px; margin-bottom: 16px; }
+.a11y-panel label {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 12px;
+  font-size: 14px; cursor: pointer; transition: opacity 0.2s;
+}
+.a11y-panel label:hover { opacity: 0.8; }
+.a11y-panel input[type="checkbox"] {
+  width: 18px; height: 18px; accent-color: var(--primary); cursor: pointer;
+}
+
+/* Keyboard hint */
+.kbd-hint {
+  position: fixed; bottom: 12px; left: 12px; z-index: 50;
+  font-size: 11px; color: var(--text-muted); opacity: 0.5;
+  display: flex; gap: 12px; pointer-events: none;
+}
+.kbd-hint kbd {
+  display: inline-block; padding: 2px 6px; border-radius: 4px;
+  background: var(--surface-2); border: 1px solid var(--border);
+  font-family: monospace; font-size: 10px; margin-right: 2px;
+}
+
+/* Responsive: Tablet */
+@media (max-width: 1024px) {
+  .chat-panel { width: 300px; }
+}
+
+/* Responsive: Mobile */
 @media (max-width: 768px) {
   .chat-panel { position: absolute; right: 0; top: 0; bottom: 0; width: 85%; max-width: 320px; z-index: 10; }
   .chat-panel.hidden { transform: translateX(100%); }
-  .topbar { padding: 10px 12px; }
+  .topbar { padding: calc(10px + var(--safe-top)) 12px 10px; }
   .logo { font-size: 16px; }
-  .controls-bar { padding: 8px 12px; flex-wrap: wrap; }
+  .controls-bar { padding: 8px 12px calc(8px + var(--safe-bottom)); flex-wrap: wrap; gap: 6px; }
   .control-btn { padding: 6px 10px; font-size: 12px; }
+  .quality-indicator { display: none; }
+  .kbd-hint { display: none; }
 }
+
+/* Responsive: Small mobile */
 @media (max-width: 480px) {
   .status-badge { font-size: 11px; padding: 4px 8px; }
+  .status-badge span:not(.status-dot) { display: none; }
   .control-btn span { display: none; }
+  .control-btn { padding: 8px; }
+  .control-btn svg { width: 20px; height: 20px; }
+  .icon-btn { width: 36px; height: 36px; }
+  .icon-btn svg { width: 18px; height: 18px; }
+  .chat-panel { width: 90%; }
+  .a11y-panel { right: 12px; left: 12px; min-width: auto; }
+}
+
+/* Responsive: Very small */
+@media (max-width: 360px) {
+  .logo span { display: none; }
+  .controls-bar { gap: 4px; }
+}
+
+/* Landscape mobile */
+@media (max-height: 500px) and (orientation: landscape) {
+  .topbar { min-height: 44px; padding: 6px 12px; }
+  .logo { font-size: 14px; }
+  .logo svg { width: 18px; height: 18px; }
+  .controls-bar { padding: 4px 12px; }
+  .control-btn { padding: 4px 8px; font-size: 11px; }
+  .chat-panel { width: 260px; }
 }
 
 /* High contrast */
@@ -210,6 +387,7 @@ input { font-family: inherit; }
 [data-contrast="high"] .chat-send:focus-visible {
   outline: 3px solid #fbbf24; outline-offset: 3px;
 }
+[data-contrast="high"] .chat-msg.other { border: 1px solid var(--border); }
 
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
@@ -220,6 +398,7 @@ input { font-family: inherit; }
 [data-text-size="large"] { font-size: 18px; }
 [data-text-size="large"] .chat-msg { font-size: 16px; }
 [data-text-size="large"] .control-btn { font-size: 15px; }
+[data-text-size="large"] .status-badge { font-size: 14px; }
 </style>
 </head>
 <body>
@@ -233,6 +412,13 @@ input { font-family: inherit; }
     </div>
   </div>
   <div class="topbar-right">
+    <div id="quality-indicator" class="quality-indicator" style="display:none">
+      <div class="quality-bars">
+        <div class="quality-bar"></div><div class="quality-bar"></div>
+        <div class="quality-bar"></div><div class="quality-bar"></div>
+      </div>
+      <span id="fps-text">0</span> fps
+    </div>
     <div id="status-badge" class="status-badge disconnected" role="status" aria-live="polite">
       <span class="status-dot"></span>
       <span id="status-text">Disconnected</span>
@@ -241,20 +427,24 @@ input { font-family: inherit; }
       <svg id="moon-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
       <svg id="sun-icon" style="display:none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
     </button>
-    <button class="icon-btn" id="chat-toggle" aria-label="Toggle chat panel" title="Toggle chat">
+    <button class="icon-btn" id="chat-toggle" aria-label="Toggle chat panel" title="Toggle chat (C)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      <span class="unread-badge" id="unread-badge">0</span>
     </button>
   </div>
 </div>
 
 <div class="main-area">
-  <div class="video-container">
+  <div class="video-container" id="video-container">
     <canvas id="stream-canvas" role="img" aria-label="Shared screen stream" tabindex="0"></canvas>
+    <div class="fps-overlay" id="fps-overlay">0 FPS</div>
     <div id="loading-overlay" class="loading-overlay">
       <div class="spinner"></div>
       <p id="loading-text">Connecting to host...</p>
     </div>
   </div>
+
+  <div class="chat-backdrop" id="chat-backdrop"></div>
 
   <div id="chat-panel" class="chat-panel hidden" role="complementary" aria-label="Chat panel">
     <div class="chat-header">
@@ -263,40 +453,45 @@ input { font-family: inherit; }
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
-    <div id="chat-messages" class="chat-messages" role="log" aria-live="polite" aria-label="Chat messages"></div>
+    <div id="chat-messages" class="chat-messages" role="log" aria-live="polite" aria-label="Chat messages">
+      <div class="chat-empty" id="chat-empty">No messages yet. Start the conversation!</div>
+    </div>
     <div class="chat-input-area">
-      <input type="text" id="chat-input" class="chat-input" placeholder="Type a message..." aria-label="Chat message input" maxlength="1000">
+      <input type="text" id="chat-input" class="chat-input" placeholder="Type a message..." aria-label="Chat message input" maxlength="1000" autocomplete="off">
       <button id="chat-send" class="chat-send" aria-label="Send message" disabled>Send</button>
     </div>
   </div>
 </div>
 
 <div class="controls-bar">
-  <button class="control-btn" id="btn-fullscreen" aria-label="Toggle fullscreen">
+  <button class="control-btn" id="btn-fullscreen" aria-label="Toggle fullscreen" title="Fullscreen (F)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
     <span>Fullscreen</span>
   </button>
-  <button class="control-btn" id="btn-snapshot" aria-label="Take snapshot">
+  <button class="control-btn" id="btn-snapshot" aria-label="Take snapshot" title="Snapshot (S)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
     <span>Snapshot</span>
   </button>
-  <button class="control-btn" id="btn-a11y" aria-label="Accessibility settings">
+  <button class="control-btn" id="btn-a11y" aria-label="Accessibility settings" title="Accessibility (A)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 0-10 10 10 10 0 0 0 10 10 10 10 0 0 0 10-10 10 10 0 0 0-10-10zm0 4a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm0 6c-2.5 0-4.5 1.5-4.5 3.5S9.5 20 12 20s4.5-1.5 4.5-3.5S14.5 12 12 12z"/></svg>
     <span>Accessibility</span>
   </button>
 </div>
 
-<div id="a11y-panel" style="display:none;position:fixed;bottom:60px;right:20px;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;z-index:100;min-width:260px;box-shadow:0 8px 32px rgba(0,0,0,0.3)">
-  <h3 style="font-size:16px;margin-bottom:16px">Accessibility</h3>
-  <label style="display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:14px;cursor:pointer">
-    <input type="checkbox" id="a11y-contrast"> High Contrast
-  </label>
-  <label style="display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:14px;cursor:pointer">
-    <input type="checkbox" id="a11y-large-text"> Large Text
-  </label>
-  <label style="display:flex;align-items:center;gap:8px;font-size:14px;cursor:pointer">
-    <input type="checkbox" id="a11y-captions" checked> Visual Notifications
-  </label>
+<div class="a11y-panel" id="a11y-panel">
+  <h3>Accessibility</h3>
+  <label><input type="checkbox" id="a11y-contrast"> High Contrast</label>
+  <label><input type="checkbox" id="a11y-large-text"> Large Text</label>
+  <label><input type="checkbox" id="a11y-captions" checked> Visual Notifications</label>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+
+<div class="kbd-hint">
+  <span><kbd>F</kbd> Fullscreen</span>
+  <span><kbd>C</kbd> Chat</span>
+  <span><kbd>S</kbd> Snapshot</span>
+  <span><kbd>A</kbd> Accessibility</span>
 </div>
 
 <script>
@@ -316,16 +511,31 @@ input { font-family: inherit; }
   let chatMessages = document.getElementById('chat-messages');
   let chatInput = document.getElementById('chat-input');
   let chatSend = document.getElementById('chat-send');
-  let lastFrameTime = 0;
+  let chatEmpty = document.getElementById('chat-empty');
+  let chatBackdrop = document.getElementById('chat-backdrop');
+  let unreadBadge = document.getElementById('unread-badge');
+  let fpsOverlay = document.getElementById('fps-overlay');
+  let qualityIndicator = document.getElementById('quality-indicator');
+  let fpsText = document.getElementById('fps-text');
+  let toastContainer = document.getElementById('toast-container');
+  let a11yPanel = document.getElementById('a11y-panel');
+  let videoContainer = document.getElementById('video-container');
+
   let frameCount = 0;
-  let fpsTimer = 0;
+  let fpsTimer = performance.now();
+  let currentFps = 0;
   let visualNotify = true;
+  let unreadCount = 0;
+  let isChatOpen = false;
+  let canvasScale = 1;
+  let canvasPanX = 0;
+  let canvasPanY = 0;
 
   // i18n
   const translations = {
-    en: { connecting: 'Connecting to host...', disconnected: 'Disconnected', connected: 'Connected', waitingHost: 'Waiting for host to start...', streamEnded: 'Stream has ended', typeMsg: 'Type a message...', send: 'Send', fullscreen: 'Fullscreen', snapshot: 'Snapshot', accessibility: 'Accessibility', highContrast: 'High Contrast', largeText: 'Large Text', visualNotif: 'Visual Notifications' },
-    id: { connecting: 'Menghubungkan ke host...', disconnected: 'Terputus', connected: 'Terhubung', waitingHost: 'Menunggu host memulai...', streamEnded: 'Siaran telah berakhir', typeMsg: 'Ketik pesan...', send: 'Kirim', fullscreen: 'Layar Penuh', snapshot: 'Tangkap Layar', accessibility: 'Aksesibilitas', highContrast: 'Kontras Tinggi', largeText: 'Teks Besar', visualNotif: 'Notifikasi Visual' },
-    ar: { connecting: 'جارٍ الاتصال بالمضيف...', disconnected: 'غير متصل', connected: 'متصل', waitingHost: 'في انتظار بدء المضيف...', streamEnded: 'انتهى البث', typeMsg: 'اكتب رسالة...', send: 'إرسال', fullscreen: 'ملء الشاشة', snapshot: 'لقطة شاشة', accessibility: 'إمكانية الوصول', highContrast: 'تباين عالي', largeText: 'نص كبير', visualNotif: 'إشعارات مرئية' }
+    en: { connecting: 'Connecting to host...', disconnected: 'Disconnected', connected: 'Connected', waitingHost: 'Waiting for host to start...', streamEnded: 'Stream has ended', typeMsg: 'Type a message...', send: 'Send', fullscreen: 'Fullscreen', snapshot: 'Snapshot', accessibility: 'Accessibility', highContrast: 'High Contrast', largeText: 'Large Text', visualNotif: 'Visual Notifications', snapshotSaved: 'Snapshot saved', chatEmpty: 'No messages yet. Start the conversation!', qualityExcellent: 'Excellent', qualityGood: 'Good', qualityFair: 'Fair', qualityPoor: 'Poor' },
+    id: { connecting: 'Menghubungkan ke host...', disconnected: 'Terputus', connected: 'Terhubung', waitingHost: 'Menunggu host memulai...', streamEnded: 'Siaran telah berakhir', typeMsg: 'Ketik pesan...', send: 'Kirim', fullscreen: 'Layar Penuh', snapshot: 'Tangkap Layar', accessibility: 'Aksesibilitas', highContrast: 'Kontras Tinggi', largeText: 'Teks Besar', visualNotif: 'Notifikasi Visual', snapshotSaved: 'Tangkapan layar disimpan', chatEmpty: 'Belum ada pesan. Mulai percakapan!', qualityExcellent: 'Sangat Baik', qualityGood: 'Baik', qualityFair: 'Cukup', qualityPoor: 'Buruk' },
+    ar: { connecting: 'جارٍ الاتصال بالمضيف...', disconnected: 'غير متصل', connected: 'متصل', waitingHost: 'في انتظار بدء المضيف...', streamEnded: 'انتهى البث', typeMsg: 'اكتب رسالة...', send: 'إرسال', fullscreen: 'ملء الشاشة', snapshot: 'لقطة شاشة', accessibility: 'إمكانية الوصول', highContrast: 'تباين عالي', largeText: 'نص كبير', visualNotif: 'إشعارات مرئية', snapshotSaved: 'تم حفظ لقطة الشاشة', chatEmpty: 'لا توجد رسائل بعد. ابدأ المحادثة!', qualityExcellent: 'ممتاز', qualityGood: 'جيد', qualityFair: 'مقبول', qualityPoor: 'ضعيف' }
   };
   let lang = localStorage.getItem('yourshare-lang') || (navigator.language || 'en').split('-')[0];
   if (!translations[lang]) lang = 'en';
@@ -335,6 +545,7 @@ input { font-family: inherit; }
     loadingText.textContent = t('connecting');
     chatInput.placeholder = t('typeMsg');
     chatSend.textContent = t('send');
+    chatEmpty.textContent = t('chatEmpty');
     document.documentElement.lang = lang;
     document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
   }
@@ -343,26 +554,54 @@ input { font-family: inherit; }
   function initTheme() {
     const saved = localStorage.getItem('yourshare-theme');
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const isDark = saved ? saved === 'dark' : prefersDark;
-    setTheme(isDark);
+    setTheme(saved ? saved === 'dark' : prefersDark);
   }
   function setTheme(isDark) {
     document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
     localStorage.setItem('yourshare-theme', isDark ? 'dark' : 'light');
     document.getElementById('moon-icon').style.display = isDark ? 'none' : 'block';
     document.getElementById('sun-icon').style.display = isDark ? 'block' : 'none';
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', isDark ? '#0f172a' : '#f8fafc');
   }
   document.getElementById('theme-toggle').addEventListener('click', () => {
-    const isDark = document.documentElement.getAttribute('data-theme') !== 'dark';
-    setTheme(isDark);
+    setTheme(document.documentElement.getAttribute('data-theme') !== 'dark');
   });
 
-  // WebSocket connection
+  // Toast
+  function showToast(message, type) {
+    const toast = document.createElement('div');
+    toast.className = 'toast ' + (type || '');
+    const icon = type === 'success' ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>' : '';
+    toast.innerHTML = icon + '<span>' + escapeHtml(message) + '</span>';
+    toastContainer.appendChild(toast);
+    setTimeout(function() {
+      toast.classList.add('removing');
+      setTimeout(function() { toast.remove(); }, 300);
+    }, 2500);
+  }
+
+  // Ripple effect
+  function addRipple(el, e) {
+    const rect = el.getBoundingClientRect();
+    const size = Math.max(rect.width, rect.height);
+    const x = (e.clientX || rect.left + rect.width / 2) - rect.left - size / 2;
+    const y = (e.clientY || rect.top + rect.height / 2) - rect.top - size / 2;
+    const ripple = document.createElement('span');
+    ripple.className = 'ripple';
+    ripple.style.width = ripple.style.height = size + 'px';
+    ripple.style.left = x + 'px';
+    ripple.style.top = y + 'px';
+    el.appendChild(ripple);
+    setTimeout(function() { ripple.remove(); }, 600);
+  }
+
+  // WebSocket
   function connect() {
     const wsUrl = location.protocol === 'https:' ? 'wss://' : 'ws://' + location.host + '/ws';
     setStatus('connecting');
     loadingText.textContent = t('connecting');
-    loadingOverlay.style.display = 'flex';
+    loadingOverlay.classList.remove('hidden');
 
     try {
       ws = new WebSocket(wsUrl);
@@ -376,17 +615,14 @@ input { font-family: inherit; }
     ws.onopen = function() {
       connected = true;
       setStatus('connected');
-      loadingOverlay.style.display = 'none';
+      loadingOverlay.classList.add('hidden');
       chatSend.disabled = false;
       if (visualNotify) flashScreen('rgba(59,130,246,0.3)');
     };
 
     ws.onmessage = function(event) {
-      if (event.data instanceof ArrayBuffer) {
-        handleBinaryFrame(event.data);
-      } else {
-        handleTextMessage(event.data);
-      }
+      if (event.data instanceof ArrayBuffer) handleBinaryFrame(event.data);
+      else handleTextMessage(event.data);
     };
 
     ws.onclose = function() {
@@ -394,7 +630,9 @@ input { font-family: inherit; }
       setStatus('disconnected');
       chatSend.disabled = true;
       loadingText.textContent = t('streamEnded');
-      loadingOverlay.style.display = 'flex';
+      loadingOverlay.classList.remove('hidden');
+      qualityIndicator.style.display = 'none';
+      fpsOverlay.classList.remove('visible');
       setTimeout(connect, 2000);
     };
 
@@ -407,39 +645,67 @@ input { font-family: inherit; }
   function handleBinaryFrame(data) {
     const view = new Uint8Array(data);
     if (view[0] !== 0x01) return;
-
     const frameLen = (view[1] << 16) | (view[2] << 8) | view[3];
     const jpegData = view.slice(4, 4 + frameLen);
-
     const blob = new Blob([jpegData], { type: 'image/jpeg' });
     const url = URL.createObjectURL(blob);
     const img = new Image();
 
     img.onload = function() {
-      if (canvas.width !== img.width) canvas.width = img.width;
-      if (canvas.height !== img.height) canvas.height = img.height;
+      if (canvas.width !== img.width) {
+        canvas.width = img.width;
+        canvas.height = img.height;
+        canvas.classList.remove('fade-in');
+        void canvas.offsetWidth;
+        canvas.classList.add('fade-in');
+      }
       ctx.drawImage(img, 0, 0);
       URL.revokeObjectURL(url);
 
       frameCount++;
       const now = performance.now();
       if (now - fpsTimer > 1000) {
+        currentFps = Math.round(frameCount * 1000 / (now - fpsTimer));
         frameCount = 0;
         fpsTimer = now;
+        updateFpsDisplay();
       }
     };
     img.src = url;
+  }
+
+  function updateFpsDisplay() {
+    fpsOverlay.textContent = currentFps + ' FPS';
+    fpsOverlay.classList.add('visible');
+    fpsText.textContent = currentFps;
+    qualityIndicator.style.display = 'flex';
+
+    // Quality bars
+    const bars = qualityIndicator.querySelectorAll('.quality-bar');
+    let activeBars = 1;
+    let qualityClass = 'poor';
+    if (currentFps >= 25) { activeBars = 4; qualityClass = 'excellent'; }
+    else if (currentFps >= 15) { activeBars = 3; qualityClass = 'good'; }
+    else if (currentFps >= 8) { activeBars = 2; qualityClass = 'fair'; }
+
+    bars.forEach(function(bar, i) {
+      bar.classList.toggle('active', i < activeBars);
+    });
+    qualityIndicator.className = 'quality-indicator ' + qualityClass;
   }
 
   function handleTextMessage(text) {
     try {
       const msg = JSON.parse(text);
       switch(msg.type) {
-        case 'info':
-          break;
+        case 'info': break;
         case 'chat':
           addChatMessage(msg.user, msg.text, msg.timestamp, false);
           if (visualNotify) flashScreen('rgba(59,130,246,0.15)');
+          if (!isChatOpen) {
+            unreadCount++;
+            updateUnreadBadge();
+          }
           break;
         case 'chat_history':
           if (msg.messages) {
@@ -469,12 +735,15 @@ input { font-family: inherit; }
 
   // Chat
   function addChatMessage(user, text, timestamp, isSelf) {
+    if (chatEmpty) chatEmpty.style.display = 'none';
     const div = document.createElement('div');
     div.className = 'chat-msg ' + (isSelf ? 'self' : 'other');
     const time = new Date((timestamp || 0) * 1000).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
     div.innerHTML = '<div class="chat-user">' + escapeHtml(user) + '</div><div>' + escapeHtml(text) + '</div><div class="chat-time">' + time + '</div>';
     chatMessages.appendChild(div);
-    chatMessages.scrollTop = chatMessages.scrollHeight;
+    requestAnimationFrame(function() {
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    });
   }
 
   function escapeHtml(str) {
@@ -486,50 +755,78 @@ input { font-family: inherit; }
   function sendChat() {
     const text = chatInput.value.trim();
     if (!text || !connected) return;
-    const msg = JSON.stringify({ type: 'chat', user: 'Viewer', text: text });
-    ws.send(msg);
+    ws.send(JSON.stringify({ type: 'chat', user: 'Viewer', text: text }));
     addChatMessage('You', text, Date.now() / 1000, true);
     chatInput.value = '';
   }
 
-  chatSend.addEventListener('click', sendChat);
-  chatInput.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendChat();
+  function updateUnreadBadge() {
+    if (unreadCount > 0) {
+      unreadBadge.textContent = unreadCount > 99 ? '99+' : unreadCount;
+      unreadBadge.classList.add('visible');
+    } else {
+      unreadBadge.classList.remove('visible');
     }
+  }
+
+  function openChat() {
+    chatPanel.classList.remove('hidden');
+    chatBackdrop.classList.add('visible');
+    isChatOpen = true;
+    unreadCount = 0;
+    updateUnreadBadge();
+    setTimeout(function() { chatInput.focus(); }, 100);
+  }
+
+  function closeChat() {
+    chatPanel.classList.add('hidden');
+    chatBackdrop.classList.remove('visible');
+    isChatOpen = false;
+  }
+
+  function toggleChat() {
+    if (isChatOpen) closeChat(); else openChat();
+  }
+
+  chatSend.addEventListener('click', function(e) { addRipple(this, e); sendChat(); });
+  chatInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
   });
 
-  // Chat toggle
-  document.getElementById('chat-toggle').addEventListener('click', function() {
-    chatPanel.classList.toggle('hidden');
-    if (!chatPanel.classList.contains('hidden')) chatInput.focus();
-  });
-  document.getElementById('chat-close').addEventListener('click', function() {
-    chatPanel.classList.add('hidden');
-  });
+  document.getElementById('chat-toggle').addEventListener('click', toggleChat);
+  document.getElementById('chat-close').addEventListener('click', closeChat);
+  chatBackdrop.addEventListener('click', closeChat);
 
   // Fullscreen
-  document.getElementById('btn-fullscreen').addEventListener('click', function() {
-    if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen();
-    } else {
-      document.exitFullscreen();
-    }
+  function toggleFullscreen() {
+    if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+    else document.exitFullscreen();
+  }
+  document.getElementById('btn-fullscreen').addEventListener('click', function(e) {
+    addRipple(this, e); toggleFullscreen();
   });
 
+  // Double-click video to fullscreen
+  videoContainer.addEventListener('dblclick', toggleFullscreen);
+
   // Snapshot
-  document.getElementById('btn-snapshot').addEventListener('click', function() {
+  function takeSnapshot() {
+    if (!canvas.width) { showToast('No stream available'); return; }
     const link = document.createElement('a');
     link.download = 'yourshare-snapshot-' + Date.now() + '.png';
     link.href = canvas.toDataURL('image/png');
     link.click();
+    showToast(t('snapshotSaved'), 'success');
+    if (visualNotify) flashScreen('rgba(34,197,94,0.15)');
+  }
+  document.getElementById('btn-snapshot').addEventListener('click', function(e) {
+    addRipple(this, e); takeSnapshot();
   });
 
-  // Accessibility panel
-  document.getElementById('btn-a11y').addEventListener('click', function() {
-    const panel = document.getElementById('a11y-panel');
-    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+  // A11y panel
+  document.getElementById('btn-a11y').addEventListener('click', function(e) {
+    addRipple(this, e);
+    a11yPanel.classList.toggle('visible');
   });
   document.getElementById('a11y-contrast').addEventListener('change', function() {
     document.documentElement.setAttribute('data-contrast', this.checked ? 'high' : 'normal');
@@ -542,6 +839,15 @@ input { font-family: inherit; }
   document.getElementById('a11y-captions').addEventListener('change', function() {
     visualNotify = this.checked;
     localStorage.setItem('yourshare-visual-notify', this.checked ? '1' : '0');
+  });
+
+  // Outside click closes a11y panel
+  document.addEventListener('click', function(e) {
+    if (a11yPanel.classList.contains('visible') &&
+        !a11yPanel.contains(e.target) &&
+        !document.getElementById('btn-a11y').contains(e.target)) {
+      a11yPanel.classList.remove('visible');
+    }
   });
 
   // Restore a11y settings
@@ -558,14 +864,79 @@ input { font-family: inherit; }
     visualNotify = false;
   }
 
-  // Auto-reload in dev mode (polls every 2s, reloads if server restarts)
+  // Keyboard shortcuts
+  document.addEventListener('keydown', function(e) {
+    if (e.target === chatInput) return;
+    const key = e.key.toLowerCase();
+    if (key === 'f') { e.preventDefault(); toggleFullscreen(); }
+    else if (key === 'c') { e.preventDefault(); toggleChat(); }
+    else if (key === 's') { e.preventDefault(); takeSnapshot(); }
+    else if (key === 'a') { e.preventDefault(); a11yPanel.classList.toggle('visible'); }
+    else if (key === 'escape' && isChatOpen) { closeChat(); }
+  });
+
+  // Touch swipe to open/close chat (mobile)
+  let touchStartX = 0, touchStartY = 0, touchEndX = 0, touchEndY = 0;
+  videoContainer.addEventListener('touchstart', function(e) {
+    touchStartX = e.changedTouches[0].screenX;
+    touchStartY = e.changedTouches[0].screenY;
+  }, { passive: true });
+  videoContainer.addEventListener('touchend', function(e) {
+    touchEndX = e.changedTouches[0].screenX;
+    touchEndY = e.changedTouches[0].screenY;
+    const dx = touchEndX - touchStartX;
+    const dy = touchEndY - touchStartY;
+    if (Math.abs(dx) > 80 && Math.abs(dx) > Math.abs(dy) * 2) {
+      if (dx > 0 && !isChatOpen && touchStartX < 60) openChat();
+      else if (dx < 0 && isChatOpen) closeChat();
+    }
+  }, { passive: true });
+
+  // Pinch zoom on canvas
+  let pinchDist = 0;
+  videoContainer.addEventListener('touchstart', function(e) {
+    if (e.touches.length === 2) {
+      pinchDist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+    }
+  }, { passive: true });
+  videoContainer.addEventListener('touchmove', function(e) {
+    if (e.touches.length === 2 && pinchDist > 0) {
+      e.preventDefault();
+      const newDist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      const scale = Math.max(1, Math.min(4, canvasScale * (newDist / pinchDist)));
+      canvas.style.transform = 'scale(' + scale + ')';
+      canvasScale = scale;
+      pinchDist = newDist;
+    }
+  }, { passive: false });
+  videoContainer.addEventListener('touchend', function(e) {
+    if (e.touches.length < 2) pinchDist = 0;
+  }, { passive: true });
+
+  // Double-tap to reset zoom
+  let lastTap = 0;
+  videoContainer.addEventListener('touchend', function(e) {
+    const now = Date.now();
+    if (now - lastTap < 300 && canvasScale !== 1) {
+      canvasScale = 1;
+      canvas.style.transform = 'scale(1)';
+      showToast('Zoom reset');
+    }
+    lastTap = now;
+  }, { passive: true });
+
+  // Auto-reload in dev mode
   if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
-    let lastCheck = Date.now();
     setInterval(function() {
       fetch('/api/info').then(function(r) {
         if (!r.ok) location.reload();
       }).catch(function() {
-        // Server down, wait and reload when back
         setTimeout(function() { location.reload(); }, 1000);
       });
     }, 3000);
