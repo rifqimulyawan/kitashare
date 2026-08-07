@@ -1,3 +1,4 @@
+#[cfg(debug_assertions)]
 use tauri::Manager;
 
 mod capture;
@@ -8,6 +9,7 @@ mod commands;
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_dialog::init())
         .manage(commands::ShareState::default())
         .setup(|_app| {
             #[cfg(debug_assertions)]
@@ -23,6 +25,9 @@ pub fn run() {
             commands::get_session_info,
             commands::get_local_ip,
             commands::get_available_displays,
+            commands::share_files,
+            commands::clear_files,
+            commands::remove_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running YourShare");

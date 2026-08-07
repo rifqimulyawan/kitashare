@@ -122,3 +122,34 @@ export const useShareStore = create<ShareState>((set) => ({
         : null,
     })),
 }));
+
+interface UserProfile {
+  name: string;
+  avatar: string;
+  bio: string;
+  setName: (name: string) => void;
+  setAvatar: (avatar: string) => void;
+  setBio: (bio: string) => void;
+}
+
+const savedName = localStorage.getItem("yourshare-profile-name") || "";
+const savedAvatar = localStorage.getItem("yourshare-profile-avatar") || "";
+const savedBio = localStorage.getItem("yourshare-profile-bio") || "";
+
+export const useProfileStore = create<UserProfile>((set) => ({
+  name: savedName,
+  avatar: savedAvatar,
+  bio: savedBio,
+  setName: (name) => {
+    localStorage.setItem("yourshare-profile-name", name);
+    set({ name });
+  },
+  setAvatar: (avatar) => {
+    localStorage.setItem("yourshare-profile-avatar", avatar);
+    set({ avatar });
+  },
+  setBio: (bio) => {
+    localStorage.setItem("yourshare-profile-bio", bio);
+    set({ bio });
+  },
+}));

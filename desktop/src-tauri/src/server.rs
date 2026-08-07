@@ -1,9 +1,10 @@
 use axum::{
     extract::{
         ws::{Message, WebSocket, WebSocketUpgrade},
+        Path,
         State,
     },
-    response::Html,
+    response::{Html, IntoResponse, Response},
     routing::get,
     Router,
 };
@@ -20,14 +21,27 @@ pub struct ChatMessage {
     pub timestamp: u64,
 }
 
+#[derive(Clone, serde::Serialize)]
+pub struct SharedFile {
+    pub id: usize,
+    pub name: String,
+    pub size: u64,
+    pub path: String,
+}
+
 pub struct ServerState {
     pub frame_tx: broadcast::Sender<Arc<Vec<u8>>>,
     pub chat_tx: broadcast::Sender<String>,
+    pub raise_hand_tx: broadcast::Sender<String>,
     pub client_count: Arc<AtomicUsize>,
     pub chat_messages: Arc<Mutex<Vec<ChatMessage>>>,
     pub width: usize,
     pub height: usize,
     pub fps: u32,
+    pub host_name: String,
+    pub host_avatar: String,
+    pub host_bio: String,
+    pub shared_files: Arc<Mutex<Vec<SharedFile>>>,
 }
 
 #[cfg(not(debug_assertions))]
@@ -57,6 +71,8 @@ pub async fn start_server(port: u16, state: Arc<ServerState>) -> Result<tokio::t
         .route("/", get(viewer_handler))
         .route("/ws", get(ws_handler))
         .route("/api/info", get(info_handler))
+        .route("/api/files", get(files_handler))
+        .route("/api/files/{id}", get(file_download_handler))
         .with_state(state);
 
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", port))
@@ -98,13 +114,56 @@ async fn info_handler(State(state): State<Arc<ServerState>>) -> axum::Json<serde
         "height": state.height,
         "fps": state.fps,
         "clients": state.client_count.load(Ordering::Relaxed),
+        "host": {
+            "name": state.host_name,
+            "avatar": state.host_avatar,
+            "bio": state.host_bio,
+        },
+        "files": state.shared_files.lock().len()
     }))
+}
+
+async fn files_handler(State(state): State<Arc<ServerState>>) -> axum::Json<serde_json::Value> {
+    let files = state.shared_files.lock();
+    let list: Vec<serde_json::Value> = files.iter().map(|f| {
+        serde_json::json!({
+            "id": f.id,
+            "name": f.name,
+            "size": f.size,
+        })
+    }).collect();
+    axum::Json(serde_json::json!({ "files": list }))
+}
+
+async fn file_download_handler(
+    Path(id): Path<usize>,
+    State(state): State<Arc<ServerState>>,
+) -> Response {
+    let files = state.shared_files.lock();
+    let file = files.iter().find(|f| f.id == id);
+    match file {
+        Some(f) => {
+            match std::fs::read(&f.path) {
+                Ok(data) => {
+                    let filename = &f.name;
+                    let header_value = format!("attachment; filename=\"{}\"", filename.replace("\"", "\\\""));
+                    (
+                        [(axum::http::header::CONTENT_TYPE, "application/octet-stream".to_string()),
+                         (axum::http::header::CONTENT_DISPOSITION, header_value)],
+                        data,
+                    ).into_response()
+                }
+                Err(_) => (axum::http::StatusCode::NOT_FOUND, "File not found on disk").into_response(),
+            }
+        }
+        None => (axum::http::StatusCode::NOT_FOUND, "File not shared").into_response(),
+    }
 }
 
 async fn ws_handler(
     ws: WebSocketUpgrade,
     State(state): State<Arc<ServerState>>,
-) -> axum::response::Response {
+) -> Response {
     ws.on_upgrade(move |socket| handle_ws_connection(socket, state))
 }
 
@@ -189,6 +248,7 @@ async fn handle_ws_connection(socket: WebSocket, state: Arc<ServerState>) {
     // Message receiving task (chat from this client)
     let chat_messages = state.chat_messages.clone();
     let chat_tx = state.chat_tx.clone();
+    let raise_hand_tx = state.raise_hand_tx.clone();
     let client_count = state.client_count.clone();
 
     let mut recv_task = tokio::spawn(async move {
@@ -209,8 +269,18 @@ async fn handle_ws_connection(socket: WebSocket, state: Arc<ServerState>) {
                                 .and_then(|t| t.as_str())
                                 .unwrap_or("")
                                 .to_string();
+                            let client_id = parsed
+                                .get("clientId")
+                                .and_then(|c| c.as_str())
+                                .unwrap_or("")
+                                .to_string();
+                            let msg_subtype = parsed
+                                .get("subtype")
+                                .and_then(|s| s.as_str())
+                                .unwrap_or("")
+                                .to_string();
 
-                            if text.trim().is_empty() || text.len() > 1000 {
+                            if text.trim().is_empty() || text.len() > 2000 {
                                 continue;
                             }
 
@@ -236,9 +306,36 @@ async fn handle_ws_connection(socket: WebSocket, state: Arc<ServerState>) {
                                 "type": "chat",
                                 "user": chat_msg.user,
                                 "text": chat_msg.text,
-                                "timestamp": chat_msg.timestamp
+                                "timestamp": chat_msg.timestamp,
+                                "clientId": client_id,
+                                "subtype": msg_subtype
                             });
                             if let Ok(broadcast_str) = serde_json::to_string(&broadcast) {
+                                let _ = chat_tx.send(broadcast_str);
+                            }
+                        } else if msg_type == "raise_hand" {
+                            let user = parsed
+                                .get("user")
+                                .and_then(|u| u.as_str())
+                                .unwrap_or("Guest")
+                                .to_string();
+                            let client_id = parsed
+                                .get("clientId")
+                                .and_then(|c| c.as_str())
+                                .unwrap_or("")
+                                .to_string();
+
+                            let broadcast = serde_json::json!({
+                                "type": "raise_hand",
+                                "user": user,
+                                "clientId": client_id,
+                                "timestamp": std::time::SystemTime::now()
+                                    .duration_since(std::time::UNIX_EPOCH)
+                                    .unwrap_or_default()
+                                    .as_secs()
+                            });
+                            if let Ok(broadcast_str) = serde_json::to_string(&broadcast) {
+                                let _ = raise_hand_tx.send(broadcast_str.clone());
                                 let _ = chat_tx.send(broadcast_str);
                             }
                         }

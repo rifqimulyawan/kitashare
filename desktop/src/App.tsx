@@ -13,6 +13,16 @@ import {
   Globe,
   Cpu,
   Gauge,
+  Maximize2,
+  Hand,
+  MessageSquare,
+  Send,
+  User,
+  Camera,
+  FolderOpen,
+  FileText,
+  Trash2,
+  Download,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Button } from "./components/ui/Button";
@@ -22,14 +32,21 @@ import { Switch } from "./components/ui/Switch";
 import { Spinner } from "./components/ui/Spinner";
 import { ThemeToggle } from "./components/shared/ThemeToggle";
 import { LanguageSwitcher } from "./components/shared/LanguageSwitcher";
-import { useShareStore, useAccessibilityStore } from "./lib/store";
+import { useShareStore, useAccessibilityStore, useProfileStore } from "./lib/store";
 import {
   startSharing,
   stopSharing,
   getSessionInfo,
   getAvailableDisplays,
+  onRaiseHand,
+  onChatMessage,
+  shareFiles,
+  clearFiles,
+  removeFile,
+  openFileDialog,
   type SessionInfo,
   type DisplayInfo,
+  type SharedFileInfo,
 } from "./lib/tauri-bridge";
 
 export default function App() {
@@ -37,6 +54,7 @@ export default function App() {
   const { isSharing, sessionInfo, error, loading, setSharing, setError, setLoading, updateClients } =
     useShareStore();
   const a11y = useAccessibilityStore();
+  const profile = useProfileStore();
 
   const [displays, setDisplays] = useState<DisplayInfo[]>([]);
   const [selectedDisplay, setSelectedDisplay] = useState(0);
@@ -46,6 +64,16 @@ export default function App() {
   const [copied, setCopied] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showA11y, setShowA11y] = useState(false);
+  const [showQrFullscreen, setShowQrFullscreen] = useState(false);
+  const [raiseHandNotifications, setRaiseHandNotifications] = useState<{user: string; timestamp: number}[]>([]);
+  const [showRaiseHand, setShowRaiseHand] = useState(false);
+  const [chatMessages, setChatMessages] = useState<{user: string; text: string; timestamp: number; subtype: string; isSelf: boolean}[]>([]);
+  const [chatInput, setChatInput] = useState("");
+  const [showChat, setShowChat] = useState(false);
+  const [profileName, setProfileName] = useState(profile.name);
+  const [profileBio, setProfileBio] = useState(profile.bio);
+  const [showFiles, setShowFiles] = useState(false);
+  const [sharedFiles, setSharedFiles] = useState<SharedFileInfo[]>([]);
 
   useEffect(() => {
     getAvailableDisplays()
@@ -53,28 +81,21 @@ export default function App() {
       .catch(() => setDisplays([{ index: 0, width: 1920, height: 1080 }]));
   }, []);
 
-  // Poll client count when sharing
-  useEffect(() => {
-    if (!isSharing) return;
-    const interval = setInterval(async () => {
-      try {
-        const info = await getSessionInfo();
-        updateClients(info.clients);
-      } catch {}
-    }, 2000);
-    return () => clearInterval(interval);
-  }, [isSharing, updateClients]);
-
   const handleStart = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const info = await startSharing(selectedDisplay, quality, fps, port);
+      const info = await startSharing(
+        selectedDisplay, quality, fps, port,
+        profile.name || undefined,
+        profile.avatar || undefined,
+        profile.bio || undefined,
+      );
       setSharing(info);
     } catch (e: any) {
       setError(e?.message || String(e));
     }
-  }, [selectedDisplay, quality, fps, port, setSharing, setError, setLoading]);
+  }, [selectedDisplay, quality, fps, port, setSharing, setError, setLoading, profile]);
 
   const handleStop = useCallback(async () => {
     try {
@@ -92,6 +113,60 @@ export default function App() {
     setTimeout(() => setCopied(false), 2000);
   }, [sessionInfo]);
 
+  // Listen for raise hand events via polling /api/info
+  useEffect(() => {
+    if (!isSharing) return;
+    const interval = setInterval(async () => {
+      try {
+        const info = await getSessionInfo();
+        updateClients(info.clients);
+      } catch {}
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [isSharing, updateClients]);
+
+  // Listen for raise hand events from viewers
+  useEffect(() => {
+    if (!isSharing) return;
+    let unlisten: (() => void) | undefined;
+    onRaiseHand((payload) => {
+      setRaiseHandNotifications([{ user: payload.user, timestamp: payload.timestamp }]);
+    }).then((fn) => { unlisten = fn; });
+    return () => { if (unlisten) unlisten(); };
+  }, [isSharing]);
+
+  // Listen for chat messages from viewers
+  useEffect(() => {
+    if (!isSharing) return;
+    let unlisten: (() => void) | undefined;
+    onChatMessage((payload) => {
+      setChatMessages((prev) => [...prev, { ...payload, isSelf: false }]);
+    }).then((fn) => { unlisten = fn; });
+    return () => { if (unlisten) unlisten(); };
+  }, [isSharing]);
+
+  // Clear chat and files when sharing stops
+  useEffect(() => {
+    if (!isSharing) {
+      setChatMessages([]);
+      setShowChat(false);
+      setSharedFiles([]);
+      setShowFiles(false);
+    }
+  }, [isSharing]);
+
+  // Raise hand notification auto-dismiss
+  useEffect(() => {
+    if (raiseHandNotifications.length > 0) {
+      setShowRaiseHand(true);
+      const timer = setTimeout(() => {
+        setShowRaiseHand(false);
+        setTimeout(() => setRaiseHandNotifications([]), 300);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [raiseHandNotifications]);
+
   return (
     <div className="flex min-h-screen flex-col bg-background">
       {/* Top Bar */}
@@ -103,6 +178,40 @@ export default function App() {
           <span className="font-brand text-lg font-bold">YourShare</span>
         </div>
         <div className="flex items-center gap-1">
+          {isSharing && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowFiles(!showFiles)}
+              aria-label="Shared Files"
+              title="Shared Files"
+              className="relative"
+            >
+              <FolderOpen className="h-5 w-5" />
+              {sharedFiles.length > 0 && !showFiles && (
+                <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+                  {sharedFiles.length > 99 ? "99+" : sharedFiles.length}
+                </span>
+              )}
+            </Button>
+          )}
+          {isSharing && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowChat(!showChat)}
+              aria-label="Chat"
+              title="Chat"
+              className="relative"
+            >
+              <MessageSquare className="h-5 w-5" />
+              {chatMessages.length > 0 && !showChat && (
+                <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+                  {chatMessages.length > 99 ? "99+" : chatMessages.length}
+                </span>
+              )}
+            </Button>
+          )}
           <LanguageSwitcher />
           <ThemeToggle />
           <Button
@@ -259,6 +368,27 @@ export default function App() {
             </CardContent>
           </Card>
 
+          {/* Sharer Profile (when sharing) */}
+          {isSharing && (profile.name || profile.avatar || profile.bio) && (
+            <Card>
+              <CardContent className="flex items-center gap-4 pt-6">
+                {profile.avatar ? (
+                  <img src={profile.avatar} alt="Profile" className="h-14 w-14 rounded-full object-cover border-2 border-border" />
+                ) : (
+                  <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 border-2 border-border">
+                    <User className="h-7 w-7 text-primary" />
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-semibold">{profile.name || "Anonymous Host"}</p>
+                  {profile.bio && (
+                    <p className="truncate text-sm text-muted-foreground">{profile.bio}</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Session Info (when sharing) */}
           {isSharing && sessionInfo && (
             <Card>
@@ -269,13 +399,20 @@ export default function App() {
               <CardContent className="space-y-4">
                 {/* QR Code */}
                 <div className="flex justify-center">
-                  <div className="rounded-xl border border-border bg-white p-4">
+                  <div
+                    className="relative cursor-pointer rounded-xl border border-border bg-white p-4 transition-transform hover:scale-105"
+                    onClick={() => setShowQrFullscreen(true)}
+                    title="Click to enlarge QR"
+                  >
                     <QRCodeSVG
                       value={sessionInfo.url}
                       size={180}
                       level="M"
                       includeMargin={false}
                     />
+                    <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-black/0 opacity-0 transition-all hover:bg-black/10 hover:opacity-100">
+                      <Maximize2 className="h-8 w-8 text-primary" />
+                    </div>
                   </div>
                 </div>
 
@@ -314,8 +451,289 @@ export default function App() {
               </CardContent>
             </Card>
           )}
+
+          {/* Quick Actions (when sharing) */}
+          {isSharing && (
+            <Card>
+              <CardContent className="pt-6">
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <button
+                    onClick={() => setShowFiles(true)}
+                    className="flex flex-col items-center gap-2 rounded-xl border border-border p-4 transition-all hover:border-primary hover:bg-primary/5"
+                  >
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                      <FolderOpen className="h-5 w-5 text-primary" />
+                    </div>
+                    <span className="text-xs font-semibold">Share Files</span>
+                    {sharedFiles.length > 0 && (
+                      <Badge variant="default" className="text-[10px]">{sharedFiles.length}</Badge>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => setShowChat(true)}
+                    className="flex flex-col items-center gap-2 rounded-xl border border-border p-4 transition-all hover:border-primary hover:bg-primary/5"
+                  >
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                      <MessageSquare className="h-5 w-5 text-primary" />
+                    </div>
+                    <span className="text-xs font-semibold">Chat</span>
+                    {chatMessages.length > 0 && (
+                      <Badge variant="default" className="text-[10px]">{chatMessages.length}</Badge>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => setShowQrFullscreen(true)}
+                    className="flex flex-col items-center gap-2 rounded-xl border border-border p-4 transition-all hover:border-primary hover:bg-primary/5"
+                  >
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                      <Maximize2 className="h-5 w-5 text-primary" />
+                    </div>
+                    <span className="text-xs font-semibold">Fullscreen QR</span>
+                  </button>
+                  <button
+                    onClick={() => setShowSettings(true)}
+                    className="flex flex-col items-center gap-2 rounded-xl border border-border p-4 transition-all hover:border-primary hover:bg-primary/5"
+                  >
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                      <User className="h-5 w-5 text-primary" />
+                    </div>
+                    <span className="text-xs font-semibold">Edit Profile</span>
+                  </button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </main>
+
+      {/* Chat Panel */}
+      {showChat && isSharing && (
+        <div className="fixed inset-0 z-40 flex justify-end">
+          <div className="absolute inset-0 bg-black/30" onClick={() => setShowChat(false)} />
+          <div className="relative flex h-full w-full max-w-sm flex-col border-l border-border bg-card shadow-xl">
+            <div className="flex h-14 items-center justify-between border-b border-border px-4">
+              <div className="flex items-center gap-2">
+                <MessageSquare className="h-5 w-5 text-primary" />
+                <span className="font-semibold">Chat</span>
+                {chatMessages.length > 0 && (
+                  <Badge variant="default" className="text-xs">{chatMessages.length}</Badge>
+                )}
+              </div>
+              <Button variant="ghost" size="icon" onClick={() => setShowChat(false)} aria-label="Close chat">
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {chatMessages.length === 0 ? (
+                <div className="flex h-full items-center justify-center text-center text-sm text-muted-foreground">
+                  No messages yet. Viewers can send you messages here.
+                </div>
+              ) : (
+                chatMessages.map((msg, i) => (
+                  <div key={i} className={`flex flex-col ${msg.isSelf ? "items-end" : "items-start"}`}>
+                    <div className={`max-w-[85%] rounded-xl px-3 py-2 text-sm ${
+                      msg.isSelf ? "bg-primary text-primary-foreground" : "bg-muted"
+                    }`}>
+                      <div className="mb-0.5 text-xs font-semibold opacity-70">{msg.isSelf ? "You" : msg.user}</div>
+                      {msg.subtype === "meme" ? (
+                        <img src={msg.text} alt="Meme" className="mt-1 max-w-full rounded-lg" loading="lazy" />
+                      ) : msg.subtype === "quote" ? (
+                        <div className="border-l-2 border-primary/50 pl-2 italic">
+                          <div>{msg.text.split("|||")[0]}</div>
+                          <div className="mt-1 text-xs not-italic opacity-70">— {msg.text.split("|||")[1] || "Unknown"}</div>
+                        </div>
+                      ) : (
+                        <div>{msg.text}</div>
+                      )}
+                      <div className="mt-1 text-[10px] opacity-50">
+                        {new Date(msg.timestamp * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+            <div className="border-t border-border p-3">
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={chatInput}
+                  onChange={(e) => setChatInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && chatInput.trim()) {
+                      const text = chatInput.trim();
+                      setChatMessages((prev) => [...prev, { user: "Host", text, timestamp: Date.now() / 1000, subtype: "", isSelf: true }]);
+                      setChatInput("");
+                    }
+                  }}
+                  placeholder="Type a message..."
+                  className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+                  maxLength={1000}
+                />
+                <Button
+                  variant="default"
+                  size="icon"
+                  onClick={() => {
+                    if (chatInput.trim()) {
+                      const text = chatInput.trim();
+                      setChatMessages((prev) => [...prev, { user: "Host", text, timestamp: Date.now() / 1000, subtype: "", isSelf: true }]);
+                      setChatInput("");
+                    }
+                  }}
+                  aria-label="Send"
+                >
+                  <Send className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* File Sharing Panel */}
+      {showFiles && isSharing && (
+        <div className="fixed inset-0 z-40 flex justify-end">
+          <div className="absolute inset-0 bg-black/30" onClick={() => setShowFiles(false)} />
+          <div className="relative flex h-full w-full max-w-sm flex-col border-l border-border bg-card shadow-xl">
+            <div className="flex h-14 items-center justify-between border-b border-border px-4">
+              <div className="flex items-center gap-2">
+                <FolderOpen className="h-5 w-5 text-primary" />
+                <span className="font-semibold">Shared Files</span>
+                {sharedFiles.length > 0 && (
+                  <Badge variant="default" className="text-xs">{sharedFiles.length}</Badge>
+                )}
+              </div>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={async () => {
+                    const paths = await openFileDialog();
+                    if (paths.length > 0) {
+                      const added = await shareFiles(paths);
+                      setSharedFiles((prev) => [...prev, ...added]);
+                    }
+                  }}
+                  aria-label="Add files"
+                  title="Add files"
+                >
+                  <FileText className="h-5 w-5" />
+                </Button>
+                {sharedFiles.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={async () => {
+                      await clearFiles();
+                      setSharedFiles([]);
+                    }}
+                    aria-label="Clear all"
+                    title="Clear all"
+                  >
+                    <Trash2 className="h-5 w-5" />
+                  </Button>
+                )}
+                <Button variant="ghost" size="icon" onClick={() => setShowFiles(false)} aria-label="Close">
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 space-y-2">
+              {sharedFiles.length === 0 ? (
+                <div className="flex h-full items-center justify-center text-center text-sm text-muted-foreground">
+                  No files shared yet. Click the add button to share files with viewers.
+                </div>
+              ) : (
+                sharedFiles.map((file) => (
+                  <div key={file.id} className="flex items-center gap-3 rounded-xl border border-border p-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                      <FileText className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">{file.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {file.size < 1024 ? `${file.size} B` :
+                         file.size < 1024 * 1024 ? `${(file.size / 1024).toFixed(1)} KB` :
+                         file.size < 1024 * 1024 * 1024 ? `${(file.size / 1024 / 1024).toFixed(1)} MB` :
+                         `${(file.size / 1024 / 1024 / 1024).toFixed(1)} GB`}
+                      </p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={async () => {
+                        await removeFile(file.id);
+                        setSharedFiles((prev) => prev.filter((f) => f.id !== file.id));
+                      }}
+                      aria-label="Remove file"
+                      title="Remove"
+                      className="text-muted-foreground hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* QR Fullscreen Modal */}
+      {showQrFullscreen && sessionInfo && (
+        <div
+          className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/90 p-4"
+          onClick={() => setShowQrFullscreen(false)}
+        >
+          <button
+            className="absolute right-4 top-4 rounded-lg p-2 text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+            onClick={() => setShowQrFullscreen(false)}
+            aria-label="Close"
+          >
+            <X className="h-6 w-6" />
+          </button>
+          <div className="rounded-2xl bg-white p-8 shadow-2xl">
+            <QRCodeSVG
+              value={sessionInfo.url}
+              size={Math.min(window.innerWidth - 80, window.innerHeight - 120, 400)}
+              level="M"
+              includeMargin={false}
+            />
+          </div>
+          <p className="mt-6 text-center text-lg font-semibold text-white">
+            {sessionInfo.url}
+          </p>
+          <p className="mt-2 text-sm text-white/60">{t("host.scanQr")}</p>
+        </div>
+      )}
+
+      {/* Raise Hand Notification */}
+      {showRaiseHand && raiseHandNotifications.length > 0 && (
+        <div className="fixed bottom-4 right-4 z-50 animate-in slide-in-from-bottom-5">
+          <div className="flex items-center gap-3 rounded-xl border border-warning/30 bg-card p-4 shadow-lg">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-warning/20">
+              <Hand className="h-5 w-5 text-warning" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold">
+                {raiseHandNotifications[0].user} raised their hand!
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {new Date(raiseHandNotifications[0].timestamp * 1000).toLocaleTimeString()}
+              </p>
+            </div>
+            <button
+              className="ml-2 rounded-lg p-1 text-muted-foreground hover:bg-accent"
+              onClick={() => {
+                setShowRaiseHand(false);
+                setTimeout(() => setRaiseHandNotifications([]), 300);
+              }}
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Settings Panel */}
       {showSettings && (
@@ -336,6 +754,74 @@ export default function App() {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Profile Section */}
+              <div className="space-y-3 border-b border-border pb-4">
+                <div className="flex items-center gap-2 text-sm font-semibold">
+                  <User className="h-4 w-4" />
+                  Sharer Profile
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    {profile.avatar ? (
+                      <img src={profile.avatar} alt="Avatar" className="h-16 w-16 rounded-full object-cover border-2 border-border" />
+                    ) : (
+                      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted border-2 border-border">
+                        <User className="h-8 w-8 text-muted-foreground" />
+                      </div>
+                    )}
+                    <label className="absolute -bottom-1 -right-1 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full bg-primary text-primary-foreground hover:bg-primary-hover">
+                      <Camera className="h-3 w-3" />
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                              const result = reader.result as string;
+                              const img = new Image();
+                              img.onload = () => {
+                                const canvas = document.createElement("canvas");
+                                canvas.width = 128;
+                                canvas.height = 128;
+                                const ctx = canvas.getContext("2d");
+                                if (ctx) {
+                                  ctx.drawImage(img, 0, 0, 128, 128);
+                                  profile.setAvatar(canvas.toDataURL("image/jpeg", 0.8));
+                                }
+                              };
+                              img.src = result;
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                      />
+                    </label>
+                  </div>
+                  <div className="flex-1">
+                    <input
+                      type="text"
+                      value={profileName}
+                      onChange={(e) => setProfileName(e.target.value)}
+                      onBlur={() => profile.setName(profileName.trim())}
+                      placeholder="Your name"
+                      className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+                      maxLength={50}
+                    />
+                  </div>
+                </div>
+                <textarea
+                  value={profileBio}
+                  onChange={(e) => setProfileBio(e.target.value)}
+                  onBlur={() => profile.setBio(profileBio.trim())}
+                  placeholder="Short bio (optional)"
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary resize-none"
+                  rows={2}
+                  maxLength={200}
+                />
+              </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">{t("settings.darkMode")}</span>
                 <ThemeToggle />

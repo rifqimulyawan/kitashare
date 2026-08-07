@@ -399,16 +399,228 @@ input { font-family: inherit; }
 [data-text-size="large"] .chat-msg { font-size: 16px; }
 [data-text-size="large"] .control-btn { font-size: 15px; }
 [data-text-size="large"] .status-badge { font-size: 14px; }
+
+/* Rotate button - only rotate canvas, keep overlays in place */
+.rotate-active #stream-canvas {
+  transform: rotate(90deg);
+  transform-origin: center center;
+  max-height: 100vw;
+  max-width: 100vh;
+}
+.rotate-active .video-container {
+  overflow: hidden;
+}
+
+/* Immersive mode (fullscreen toggle) */
+body.immersive .topbar {
+  transform: translateY(-100%);
+  transition: transform 0.3s var(--ease);
+}
+body.immersive .controls-bar {
+  transform: translateY(100%);
+  transition: transform 0.3s var(--ease);
+}
+body.immersive .a11y-panel { display: none; }
+body.immersive .chat-backdrop,
+body.immersive .chat-panel.hidden { display: none; }
+/* Show a small floating exit button in immersive mode */
+.immersive-exit {
+  position: fixed; top: calc(8px + var(--safe-top)); right: 8px; z-index: 300;
+  width: 40px; height: 40px; border-radius: 50%;
+  background: rgba(0,0,0,0.5); color: #fff;
+  display: none; align-items: center; justify-content: center;
+  transition: background 0.2s var(--ease), opacity 0.3s var(--ease);
+  opacity: 0.6;
+}
+.immersive-exit:hover { background: rgba(0,0,0,0.7); opacity: 1; }
+.immersive-exit svg { width: 20px; height: 20px; }
+body.immersive .immersive-exit { display: flex; }
+
+/* Raise hand button */
+.raise-hand-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 14px; border-radius: 10px; font-size: 13px; font-weight: 600;
+  background: var(--surface-2); color: var(--text);
+  transition: background 0.15s var(--ease), transform 0.1s var(--ease);
+  position: relative; overflow: hidden;
+}
+.raise-hand-btn:hover { background: var(--warning); color: #fff; }
+.raise-hand-btn:active { transform: scale(0.95); }
+.raise-hand-btn svg { width: 18px; height: 18px; }
+.raise-hand-btn.raised { background: var(--warning); color: #fff; animation: handBounce 0.5s var(--ease-bounce); }
+@keyframes handBounce { 0% { transform: scale(1); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
+
+/* Chat message types */
+.chat-msg.meme img { max-width: 100%; border-radius: 8px; margin-top: 4px; display: block; }
+.chat-msg.quote { border-left: 3px solid var(--primary); padding-left: 10px; font-style: italic; }
+.chat-msg.quote .quote-text { font-size: 14px; }
+.chat-msg.quote .quote-author { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+.chat-msg.raise-hand { background: rgba(245,158,11,0.15); border: 1px solid var(--warning); color: var(--warning); text-align: center; font-weight: 600; }
+
+/* Chat toolbar */
+.chat-toolbar {
+  display: flex; gap: 4px; padding: 4px 12px;
+  border-top: 1px solid var(--border);
+  transition: border-color 0.3s var(--ease);
+}
+.chat-toolbar-btn {
+  flex: 1; padding: 6px; border-radius: 8px;
+  font-size: 12px; font-weight: 600;
+  background: var(--surface-2); color: var(--text-muted);
+  transition: all 0.15s var(--ease);
+  display: flex; align-items: center; justify-content: center; gap: 4px;
+}
+.chat-toolbar-btn:hover { background: var(--border); color: var(--text); }
+.chat-toolbar-btn:active { transform: scale(0.95); }
+.chat-toolbar-btn svg { width: 16px; height: 16px; }
+
+/* Picker modal */
+.picker-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+  z-index: 150; display: flex; align-items: flex-end; justify-content: center;
+  opacity: 0; pointer-events: none; transition: opacity 0.3s var(--ease);
+}
+.picker-overlay.visible { opacity: 1; pointer-events: auto; }
+.picker-sheet {
+  background: var(--surface); border-radius: 16px 16px 0 0;
+  width: 100%; max-width: 500px; max-height: 70vh;
+  display: flex; flex-direction: column;
+  transform: translateY(100%); transition: transform 0.3s var(--ease-bounce);
+}
+.picker-overlay.visible .picker-sheet { transform: translateY(0); }
+.picker-header {
+  padding: 16px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  font-weight: 600; font-size: 16px;
+}
+.picker-content { flex: 1; overflow-y: auto; padding: 12px; }
+.picker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; }
+.picker-item {
+  border-radius: 8px; overflow: hidden; cursor: pointer;
+  border: 2px solid transparent; transition: all 0.15s var(--ease);
+  background: var(--surface-2);
+}
+.picker-item:hover { border-color: var(--primary); transform: scale(1.05); }
+.picker-item img { width: 100%; height: 80px; object-fit: cover; display: block; }
+.picker-quote-item {
+  padding: 12px; border-radius: 8px; cursor: pointer;
+  background: var(--surface-2); margin-bottom: 8px;
+  border-left: 3px solid transparent;
+  transition: all 0.15s var(--ease);
+}
+.picker-quote-item:hover { border-left-color: var(--primary); background: var(--primary-light); }
+.picker-quote-text { font-size: 14px; font-style: italic; margin-bottom: 4px; }
+.picker-quote-author { font-size: 12px; color: var(--text-muted); }
+.picker-search {
+  margin: 0 16px 12px; padding: 10px 14px; border-radius: 10px;
+  border: 1px solid var(--border); background: var(--bg); color: var(--text);
+  font-size: 14px; outline: none; width: calc(100% - 32px);
+}
+.picker-search:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-light); }
+.picker-loading { text-align: center; padding: 40px; color: var(--text-muted); font-size: 14px; }
+.picker-loading .spinner { margin: 0 auto 12px; }
+
+/* Nickname modal */
+.nickname-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.8);
+  z-index: 200; display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none; transition: opacity 0.3s var(--ease);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+}
+.nickname-overlay.visible { opacity: 1; pointer-events: auto; }
+.nickname-card {
+  background: var(--surface); border-radius: 20px; padding: 32px 24px;
+  width: 90%; max-width: 360px; text-align: center;
+  transform: scale(0.9); transition: transform 0.3s var(--ease-bounce);
+  border: 1px solid var(--border);
+}
+.nickname-overlay.visible .nickname-card { transform: scale(1); }
+.nickname-card h2 { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+.nickname-card p { font-size: 14px; color: var(--text-muted); margin-bottom: 20px; }
+.nickname-card input {
+  width: 100%; padding: 12px 16px; border-radius: 12px;
+  border: 1px solid var(--border); background: var(--bg); color: var(--text);
+  font-size: 16px; outline: none; text-align: center; margin-bottom: 16px;
+}
+.nickname-card input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-light); }
+.nickname-card button {
+  width: 100%; padding: 12px; border-radius: 12px;
+  background: var(--primary); color: #fff; font-size: 16px; font-weight: 600;
+  transition: background 0.15s var(--ease), transform 0.1s var(--ease);
+}
+.nickname-card button:hover { background: var(--primary-hover); }
+.nickname-card button:active { transform: scale(0.97); }
+
+/* Host profile in viewer */
+.host-profile {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 16px; border-bottom: 1px solid var(--border);
+  background: var(--surface); transition: background 0.3s var(--ease);
+}
+.host-profile-avatar {
+  width: 36px; height: 36px; border-radius: 50%; object-fit: cover;
+  border: 2px solid var(--border); flex-shrink: 0;
+}
+.host-profile-avatar-fallback {
+  width: 36px; height: 36px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--primary-light); color: var(--primary);
+  font-weight: 700; font-size: 16px; flex-shrink: 0;
+  border: 2px solid var(--border);
+}
+.host-profile-info { min-width: 0; flex: 1; }
+.host-profile-name { font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.host-profile-bio { font-size: 12px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* File items in viewer */
+.file-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 14px; border-radius: 12px;
+  background: var(--surface); border: 1px solid var(--border);
+  text-decoration: none; color: var(--text);
+  transition: background 0.15s var(--ease), border-color 0.15s var(--ease);
+  margin-bottom: 8px;
+}
+.file-item:hover { background: var(--surface-2); border-color: var(--primary); }
+.file-item:active { transform: scale(0.98); }
+.file-item-icon { flex-shrink: 0; color: var(--primary); display: flex; align-items: center; justify-content: center; }
+.file-item-info { flex: 1; min-width: 0; }
+.file-item-name { font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file-item-size { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.file-item-dl { flex-shrink: 0; color: var(--text-muted); display: flex; align-items: center; }
+.file-item:hover .file-item-dl { color: var(--primary); }
 </style>
 </head>
 <body>
 <a href="#stream-canvas" class="skip-link">Skip to content</a>
+
+<!-- Immersive exit button -->
+<button class="immersive-exit" id="immersive-exit" aria-label="Exit fullscreen" title="Exit fullscreen (Esc)">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3v4a1 1 0 0 1-1 1H3"/><path d="M21 8h-4a1 1 0 0 1-1-1V3"/><path d="M3 16h4a1 1 0 0 1 1 1v4"/><path d="M16 21v-4a1 1 0 0 1 1-1h4"/></svg>
+</button>
+
+<!-- Nickname Modal -->
+<div class="nickname-overlay" id="nickname-overlay">
+  <div class="nickname-card">
+    <h2>Welcome to YourShare</h2>
+    <p>Enter your nickname to join the session</p>
+    <input type="text" id="nickname-input" placeholder="Your nickname..." maxlength="30" autocomplete="off">
+    <button id="nickname-submit">Join Session</button>
+  </div>
+</div>
 
 <div class="topbar">
   <div class="topbar-left">
     <div class="logo">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
       <span>YourShare</span>
+    </div>
+    <div id="host-profile" class="host-profile" style="display:none">
+      <div id="host-avatar-container"></div>
+      <div class="host-profile-info">
+        <div class="host-profile-name" id="host-name"></div>
+        <div class="host-profile-bio" id="host-bio"></div>
+      </div>
     </div>
   </div>
   <div class="topbar-right">
@@ -460,6 +672,16 @@ input { font-family: inherit; }
       <input type="text" id="chat-input" class="chat-input" placeholder="Type a message..." aria-label="Chat message input" maxlength="1000" autocomplete="off">
       <button id="chat-send" class="chat-send" aria-label="Send message" disabled>Send</button>
     </div>
+    <div class="chat-toolbar">
+      <button class="chat-toolbar-btn" id="btn-meme" aria-label="Send a meme" title="Send meme">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><circle cx="15.5" cy="8.5" r="1.5"/><path d="M7 14s1.5 2 5 2 5-2 5-2"/></svg>
+        Meme
+      </button>
+      <button class="chat-toolbar-btn" id="btn-quote" aria-label="Send a quote" title="Send quote">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"/><path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z"/></svg>
+        Quote
+      </button>
+    </div>
   </div>
 </div>
 
@@ -468,9 +690,21 @@ input { font-family: inherit; }
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
     <span>Fullscreen</span>
   </button>
+  <button class="control-btn" id="btn-rotate" aria-label="Rotate screen" title="Rotate (R)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9"/><path d="M3 4v5h5"/></svg>
+    <span>Rotate</span>
+  </button>
+  <button class="raise-hand-btn" id="btn-raise-hand" aria-label="Raise hand" title="Raise hand (H)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v0"/><path d="M14 10V4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></svg>
+    <span>Raise Hand</span>
+  </button>
   <button class="control-btn" id="btn-snapshot" aria-label="Take snapshot" title="Snapshot (S)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
     <span>Snapshot</span>
+  </button>
+  <button class="control-btn" id="btn-files" aria-label="Shared files" title="Shared Files (D)" style="display:none">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+    <span>Files</span>
   </button>
   <button class="control-btn" id="btn-a11y" aria-label="Accessibility settings" title="Accessibility (A)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 0-10 10 10 10 0 0 0 10 10 10 10 0 0 0 10-10 10 10 0 0 0-10-10zm0 4a2 2 0 1 1 0 4 2 2 0 0 1 0-4zm0 6c-2.5 0-4.5 1.5-4.5 3.5S9.5 20 12 20s4.5-1.5 4.5-3.5S14.5 12 12 12z"/></svg>
@@ -485,10 +719,41 @@ input { font-family: inherit; }
   <label><input type="checkbox" id="a11y-captions" checked> Visual Notifications</label>
 </div>
 
+<!-- File Browser Modal -->
+<div class="picker-overlay" id="files-overlay" style="display:none">
+  <div class="picker-modal">
+    <div class="picker-header">
+      <h2>Shared Files</h2>
+      <button class="picker-close" id="files-close" aria-label="Close">&times;</button>
+    </div>
+    <div class="picker-content" id="files-content">
+      <div class="picker-loading">
+        <div class="spinner"></div>
+        Loading files...
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="toast-container" id="toast-container"></div>
+
+<div class="picker-overlay" id="picker-overlay">
+  <div class="picker-sheet">
+    <div class="picker-header">
+      <span id="picker-title">Pick</span>
+      <button class="icon-btn" id="picker-close" aria-label="Close picker" style="width:32px;height:32px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <input type="text" id="picker-search" class="picker-search" placeholder="Search..." style="display:none">
+    <div class="picker-content" id="picker-content"></div>
+  </div>
+</div>
 
 <div class="kbd-hint">
   <span><kbd>F</kbd> Fullscreen</span>
+  <span><kbd>R</kbd> Rotate</span>
+  <span><kbd>H</kbd> Raise Hand</span>
   <span><kbd>C</kbd> Chat</span>
   <span><kbd>S</kbd> Snapshot</span>
   <span><kbd>A</kbd> Accessibility</span>
@@ -530,6 +795,15 @@ input { font-family: inherit; }
   let canvasScale = 1;
   let canvasPanX = 0;
   let canvasPanY = 0;
+  let isRotated = false;
+  let handRaised = false;
+  let quotesCache = null;
+  let memesCache = null;
+  let currentPicker = null;
+  let viewerNickname = '';
+  let hostProfile = null;
+
+  const clientId = 'v-' + Math.random().toString(36).substr(2, 9) + '-' + Date.now().toString(36);
 
   // i18n
   const translations = {
@@ -594,6 +868,103 @@ input { font-family: inherit; }
     ripple.style.top = y + 'px';
     el.appendChild(ripple);
     setTimeout(function() { ripple.remove(); }, 600);
+  }
+
+  // Nickname
+  function generateFallbackNickname() {
+    var saved = localStorage.getItem('yourshare-nickname');
+    if (saved) return saved;
+    var ua = navigator.userAgent || '';
+    var platform = navigator.platform || '';
+    var isMobile = /Mobile|Android|iPhone|iPad/i.test(ua);
+    var browser = 'Viewer';
+    if (/Chrome/i.test(ua) && !/Edg/i.test(ua)) browser = 'Chrome';
+    else if (/Firefox/i.test(ua)) browser = 'Firefox';
+    else if (/Safari/i.test(ua)) browser = 'Safari';
+    else if (/Edg/i.test(ua)) browser = 'Edge';
+    var shortId = Math.random().toString(36).substr(2, 4);
+    return browser + '-' + shortId;
+  }
+
+  function showNicknameModal() {
+    var overlay = document.getElementById('nickname-overlay');
+    var input = document.getElementById('nickname-input');
+    var btn = document.getElementById('nickname-submit');
+    input.value = generateFallbackNickname();
+    overlay.classList.add('visible');
+    setTimeout(function() { input.focus(); input.select(); }, 300);
+
+    function submit() {
+      var name = input.value.trim();
+      if (!name) name = generateFallbackNickname();
+      viewerNickname = name;
+      localStorage.setItem('yourshare-nickname', name);
+      overlay.classList.remove('visible');
+      fetchHostProfile();
+      connect();
+    }
+
+    btn.onclick = submit;
+    input.onkeydown = function(e) {
+      if (e.key === 'Enter') { e.preventDefault(); submit(); }
+    };
+  }
+
+  function fetchHostProfile() {
+    fetch('/api/info').then(function(r) { return r.json(); }).then(function(data) {
+      if (data.host) {
+        hostProfile = data.host;
+        renderHostProfile(data.host);
+      }
+      updateFilesButton(data.files || 0);
+    }).catch(function() {});
+  }
+
+  function updateFilesButton(count) {
+    var btn = document.getElementById('btn-files');
+    if (count > 0) {
+      btn.style.display = '';
+    } else {
+      btn.style.display = 'none';
+      closeFiles();
+    }
+  }
+
+  // Poll for file availability every 5 seconds
+  setInterval(function() {
+    fetch('/api/info').then(function(r) { return r.json(); }).then(function(data) {
+      updateFilesButton(data.files || 0);
+    }).catch(function() {});
+  }, 5000);
+
+  function renderHostProfile(host) {
+    var el = document.getElementById('host-profile');
+    var nameEl = document.getElementById('host-name');
+    var bioEl = document.getElementById('host-bio');
+    var avatarContainer = document.getElementById('host-avatar-container');
+    if (host.name) {
+      nameEl.textContent = host.name;
+      if (host.bio) {
+        bioEl.textContent = host.bio;
+        bioEl.style.display = 'block';
+      } else {
+        bioEl.style.display = 'none';
+      }
+      avatarContainer.innerHTML = '';
+      if (host.avatar) {
+        var img = document.createElement('img');
+        img.src = host.avatar;
+        img.alt = host.name;
+        img.className = 'host-profile-avatar';
+        avatarContainer.appendChild(img);
+      } else {
+        var fb = document.createElement('div');
+        fb.className = 'host-profile-avatar-fallback';
+        fb.textContent = host.name.charAt(0).toUpperCase();
+        avatarContainer.appendChild(fb);
+      }
+      el.style.display = 'flex';
+    }
   }
 
   // WebSocket
@@ -700,7 +1071,8 @@ input { font-family: inherit; }
       switch(msg.type) {
         case 'info': break;
         case 'chat':
-          addChatMessage(msg.user, msg.text, msg.timestamp, false);
+          if (msg.clientId && msg.clientId === clientId) break;
+          addChatMessage(msg.user, msg.text, msg.timestamp, false, msg.subtype || '');
           if (visualNotify) flashScreen('rgba(59,130,246,0.15)');
           if (!isChatOpen) {
             unreadCount++;
@@ -710,8 +1082,17 @@ input { font-family: inherit; }
         case 'chat_history':
           if (msg.messages) {
             msg.messages.forEach(function(m) {
-              addChatMessage(m.user, m.text, m.timestamp, false);
+              addChatMessage(m.user, m.text, m.timestamp, false, m.subtype || '');
             });
+          }
+          break;
+        case 'raise_hand':
+          if (msg.clientId && msg.clientId === clientId) break;
+          addRaiseHandMessage(msg.user, msg.timestamp);
+          if (visualNotify) flashScreen('rgba(245,158,11,0.2)');
+          if (!isChatOpen) {
+            unreadCount++;
+            updateUnreadBadge();
           }
           break;
       }
@@ -734,16 +1115,42 @@ input { font-family: inherit; }
   }
 
   // Chat
-  function addChatMessage(user, text, timestamp, isSelf) {
+  function addChatMessage(user, text, timestamp, isSelf, subtype) {
     if (chatEmpty) chatEmpty.style.display = 'none';
     const div = document.createElement('div');
-    div.className = 'chat-msg ' + (isSelf ? 'self' : 'other');
+    const cls = isSelf ? 'self' : 'other';
+    if (subtype === 'meme') div.className = 'chat-msg meme ' + cls;
+    else if (subtype === 'quote') div.className = 'chat-msg quote ' + cls;
+    else div.className = 'chat-msg ' + cls;
     const time = new Date((timestamp || 0) * 1000).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
-    div.innerHTML = '<div class="chat-user">' + escapeHtml(user) + '</div><div>' + escapeHtml(text) + '</div><div class="chat-time">' + time + '</div>';
+
+    if (subtype === 'meme') {
+      div.innerHTML = '<div class="chat-user">' + escapeHtml(user) + '</div><img src="' + escapeHtml(text) + '" alt="Meme" loading="lazy"><div class="chat-time">' + time + '</div>';
+    } else if (subtype === 'quote') {
+      var parts = text.split('|||');
+      var quoteText = parts[0] || '';
+      var quoteAuthor = parts[1] || 'Unknown';
+      div.innerHTML = '<div class="chat-user">' + escapeHtml(user) + '</div><div class="quote-text">' + escapeHtml(quoteText) + '</div><div class="quote-author">— ' + escapeHtml(quoteAuthor) + '</div><div class="chat-time">' + time + '</div>';
+    } else {
+      div.innerHTML = '<div class="chat-user">' + escapeHtml(user) + '</div><div>' + escapeHtml(text) + '</div><div class="chat-time">' + time + '</div>';
+    }
     chatMessages.appendChild(div);
     requestAnimationFrame(function() {
       chatMessages.scrollTop = chatMessages.scrollHeight;
     });
+  }
+
+  function addRaiseHandMessage(user, timestamp) {
+    if (chatEmpty) chatEmpty.style.display = 'none';
+    const div = document.createElement('div');
+    div.className = 'chat-msg raise-hand';
+    const time = new Date((timestamp || 0) * 1000).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+    div.innerHTML = '✋ ' + escapeHtml(user) + ' raised their hand <div class="chat-time">' + time + '</div>';
+    chatMessages.appendChild(div);
+    requestAnimationFrame(function() {
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    });
+    showToast(user + ' raised their hand!', '');
   }
 
   function escapeHtml(str) {
@@ -755,8 +1162,9 @@ input { font-family: inherit; }
   function sendChat() {
     const text = chatInput.value.trim();
     if (!text || !connected) return;
-    ws.send(JSON.stringify({ type: 'chat', user: 'Viewer', text: text }));
-    addChatMessage('You', text, Date.now() / 1000, true);
+    var name = viewerNickname || 'Viewer';
+    ws.send(JSON.stringify({ type: 'chat', user: name, text: text, clientId: clientId }));
+    addChatMessage('You', text, Date.now() / 1000, true, '');
     chatInput.value = '';
   }
 
@@ -797,17 +1205,217 @@ input { font-family: inherit; }
   document.getElementById('chat-close').addEventListener('click', closeChat);
   chatBackdrop.addEventListener('click', closeChat);
 
-  // Fullscreen
+  // Fullscreen / Immersive mode
   function toggleFullscreen() {
-    if (!document.fullscreenElement) document.documentElement.requestFullscreen();
-    else document.exitFullscreen();
+    var isImmersive = document.body.classList.toggle('immersive');
+    // Also try native fullscreen API (works on desktop browsers)
+    if (isImmersive) {
+      if (document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen().catch(function() {});
+      }
+    } else {
+      if (document.fullscreenElement && document.exitFullscreen) {
+        document.exitFullscreen().catch(function() {});
+      }
+    }
+  }
+  function exitImmersive() {
+    document.body.classList.remove('immersive');
+    if (document.fullscreenElement && document.exitFullscreen) {
+      document.exitFullscreen().catch(function() {});
+    }
   }
   document.getElementById('btn-fullscreen').addEventListener('click', function(e) {
     addRipple(this, e); toggleFullscreen();
   });
+  document.getElementById('immersive-exit').addEventListener('click', exitImmersive);
 
   // Double-click video to fullscreen
   videoContainer.addEventListener('dblclick', toggleFullscreen);
+
+  // Rotate
+  function toggleRotate() {
+    isRotated = !isRotated;
+    document.body.classList.toggle('rotate-active', isRotated);
+    showToast(isRotated ? 'Landscape mode' : 'Normal mode', '');
+  }
+  document.getElementById('btn-rotate').addEventListener('click', function(e) {
+    addRipple(this, e); toggleRotate();
+  });
+
+  // Raise hand
+  function raiseHand() {
+    if (!connected) return;
+    handRaised = !handRaised;
+    var btn = document.getElementById('btn-raise-hand');
+    btn.classList.toggle('raised', handRaised);
+    if (handRaised) {
+      ws.send(JSON.stringify({ type: 'raise_hand', user: viewerNickname || 'Viewer', clientId: clientId }));
+      addRaiseHandMessage('You', Date.now() / 1000);
+      if (visualNotify) flashScreen('rgba(245,158,11,0.2)');
+      setTimeout(function() {
+        handRaised = false;
+        btn.classList.remove('raised');
+      }, 5000);
+    }
+  }
+  document.getElementById('btn-raise-hand').addEventListener('click', function(e) {
+    addRipple(this, e); raiseHand();
+  });
+
+  // Meme picker
+  var pickerOverlay = document.getElementById('picker-overlay');
+  var pickerTitle = document.getElementById('picker-title');
+  var pickerContent = document.getElementById('picker-content');
+  var pickerSearch = document.getElementById('picker-search');
+  var pickerClose = document.getElementById('picker-close');
+
+  function openPicker(type) {
+    currentPicker = type;
+    pickerTitle.textContent = type === 'meme' ? 'Pick a Meme' : 'Pick a Quote';
+    pickerOverlay.classList.add('visible');
+    pickerContent.innerHTML = '<div class="picker-loading"><div class="spinner"></div>Loading...</div>';
+    pickerSearch.style.display = type === 'quote' ? 'block' : 'none';
+    pickerSearch.value = '';
+    if (type === 'meme') loadMemes();
+    else loadQuotes();
+  }
+
+  function closePicker() {
+    pickerOverlay.classList.remove('visible');
+    currentPicker = null;
+  }
+
+  pickerClose.addEventListener('click', closePicker);
+  pickerOverlay.addEventListener('click', function(e) {
+    if (e.target === pickerOverlay) closePicker();
+  });
+
+  pickerSearch.addEventListener('input', function() {
+    if (currentPicker === 'quote' && quotesCache) renderQuotes(pickerSearch.value);
+  });
+
+  function loadQuotes() {
+    if (quotesCache) { renderQuotes(''); return; }
+    fetch('https://raw.githubusercontent.com/JamesFT/Database-Quotes-JSON/master/quotes.json')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        quotesCache = data;
+        renderQuotes('');
+      })
+      .catch(function() {
+        pickerContent.innerHTML = '<div class="picker-loading">Failed to load quotes. Check your connection.</div>';
+      });
+  }
+
+  function renderQuotes(filter) {
+    if (!quotesCache) return;
+    var filtered = quotesCache;
+    if (filter) {
+      var f = filter.toLowerCase();
+      filtered = quotesCache.filter(function(q) {
+        return (q.quoteText || '').toLowerCase().indexOf(f) !== -1 ||
+               (q.quoteAuthor || '').toLowerCase().indexOf(f) !== -1;
+      });
+    }
+    var html = '';
+    var shown = filtered.slice(0, 100);
+    shown.forEach(function(q, i) {
+      html += '<div class="picker-quote-item" data-idx="' + i + '"><div class="picker-quote-text">' + escapeHtml(q.quoteText) + '</div><div class="picker-quote-author">— ' + escapeHtml(q.quoteAuthor || 'Unknown') + '</div></div>';
+    });
+    pickerContent.innerHTML = html;
+    var items = pickerContent.querySelectorAll('.picker-quote-item');
+    items.forEach(function(item, i) {
+      item.addEventListener('click', function() {
+        var q = shown[i];
+        var text = (q.quoteText || '') + '|||' + (q.quoteAuthor || 'Unknown');
+        ws.send(JSON.stringify({ type: 'chat', user: viewerNickname || 'Viewer', text: text, clientId: clientId, subtype: 'quote' }));
+        addChatMessage('You', text, Date.now() / 1000, true, 'quote');
+        closePicker();
+      });
+    });
+  }
+
+  function loadMemes() {
+    if (memesCache) { renderMemes(); return; }
+    fetch('https://api.github.com/repos/itsgucci/meme/contents/img?ref=master')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        memesCache = data.filter(function(item) {
+          return item.type === 'file' && item.download_url;
+        }).map(function(item) {
+          return { name: item.name, url: item.download_url };
+        });
+        renderMemes();
+      })
+      .catch(function() {
+        pickerContent.innerHTML = '<div class="picker-loading">Failed to load memes. Check your connection.</div>';
+      });
+  }
+
+  function renderMemes() {
+    if (!memesCache) return;
+    var html = '<div class="picker-grid">';
+    memesCache.forEach(function(m, i) {
+      html += '<div class="picker-item" data-idx="' + i + '"><img src="' + m.url + '" alt="' + escapeHtml(m.name) + '" loading="lazy"></div>';
+    });
+    html += '</div>';
+    pickerContent.innerHTML = html;
+    var items = pickerContent.querySelectorAll('.picker-item');
+    items.forEach(function(item, i) {
+      item.addEventListener('click', function() {
+        var m = memesCache[i];
+        ws.send(JSON.stringify({ type: 'chat', user: viewerNickname || 'Viewer', text: m.url, clientId: clientId, subtype: 'meme' }));
+        addChatMessage('You', m.url, Date.now() / 1000, true, 'meme');
+        closePicker();
+      });
+    });
+  }
+
+  document.getElementById('btn-meme').addEventListener('click', function() { openPicker('meme'); });
+  document.getElementById('btn-quote').addEventListener('click', function() { openPicker('quote'); });
+
+  // File browser
+  function openFiles() {
+    var overlay = document.getElementById('files-overlay');
+    var content = document.getElementById('files-content');
+    overlay.style.display = 'flex';
+    content.innerHTML = '<div class="picker-loading"><div class="spinner"></div>Loading files...</div>';
+    fetch('/api/files').then(function(r) { return r.json(); }).then(function(data) {
+      var files = data.files || [];
+      if (files.length === 0) {
+        content.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted);font-size:14px;">No files shared by host yet.</div>';
+        return;
+      }
+      var html = '<div style="padding:8px">';
+      files.forEach(function(f) {
+        var sizeStr;
+        if (f.size < 1024) sizeStr = f.size + ' B';
+        else if (f.size < 1048576) sizeStr = (f.size / 1024).toFixed(1) + ' KB';
+        else if (f.size < 1073741824) sizeStr = (f.size / 1048576).toFixed(1) + ' MB';
+        else sizeStr = (f.size / 1073741824).toFixed(1) + ' GB';
+        html += '<a href="/api/files/' + f.id + '" download="' + escapeHtml(f.name) + '" class="file-item">' +
+          '<div class="file-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>' +
+          '<div class="file-item-info"><div class="file-item-name">' + escapeHtml(f.name) + '</div><div class="file-item-size">' + sizeStr + '</div></div>' +
+          '<div class="file-item-dl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></div>' +
+          '</a>';
+      });
+      html += '</div>';
+      content.innerHTML = html;
+    }).catch(function() {
+      content.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted);font-size:14px;">Failed to load files.</div>';
+    });
+  }
+  function closeFiles() {
+    document.getElementById('files-overlay').style.display = 'none';
+  }
+  document.getElementById('btn-files').addEventListener('click', function(e) {
+    addRipple(this, e); openFiles();
+  });
+  document.getElementById('files-close').addEventListener('click', closeFiles);
+  document.getElementById('files-overlay').addEventListener('click', function(e) {
+    if (e.target === this) closeFiles();
+  });
 
   // Snapshot
   function takeSnapshot() {
@@ -869,10 +1477,16 @@ input { font-family: inherit; }
     if (e.target === chatInput) return;
     const key = e.key.toLowerCase();
     if (key === 'f') { e.preventDefault(); toggleFullscreen(); }
+    else if (key === 'r') { e.preventDefault(); toggleRotate(); }
+    else if (key === 'h') { e.preventDefault(); raiseHand(); }
     else if (key === 'c') { e.preventDefault(); toggleChat(); }
     else if (key === 's') { e.preventDefault(); takeSnapshot(); }
+    else if (key === 'd') { e.preventDefault(); openFiles(); }
     else if (key === 'a') { e.preventDefault(); a11yPanel.classList.toggle('visible'); }
     else if (key === 'escape' && isChatOpen) { closeChat(); }
+    else if (key === 'escape' && currentPicker) { closePicker(); }
+    else if (key === 'escape' && document.getElementById('files-overlay').style.display !== 'none') { closeFiles(); }
+    else if (key === 'escape' && document.body.classList.contains('immersive')) { exitImmersive(); }
   });
 
   // Touch swipe to open/close chat (mobile)
@@ -919,16 +1533,22 @@ input { font-family: inherit; }
     if (e.touches.length < 2) pinchDist = 0;
   }, { passive: true });
 
-  // Double-tap to reset zoom
+  // Double-tap to reset zoom (single finger only)
   let lastTap = 0;
+  let lastTapTouchCount = 0;
   videoContainer.addEventListener('touchend', function(e) {
+    // Only count single-finger taps for double-tap detection
+    if (lastTapTouchCount > 1) { lastTap = 0; lastTapTouchCount = e.touches.length; return; }
     const now = Date.now();
-    if (now - lastTap < 300 && canvasScale !== 1) {
+    if (now - lastTap < 300 && canvasScale !== 1 && e.touches.length === 0) {
       canvasScale = 1;
       canvas.style.transform = 'scale(1)';
       showToast('Zoom reset');
+      lastTap = 0;
+    } else {
+      lastTap = now;
     }
-    lastTap = now;
+    lastTapTouchCount = e.touches.length;
   }, { passive: true });
 
   // Auto-reload in dev mode
@@ -945,7 +1565,7 @@ input { font-family: inherit; }
   // Init
   applyTranslations();
   initTheme();
-  connect();
+  showNicknameModal();
 })();
 </script>
 </body>
