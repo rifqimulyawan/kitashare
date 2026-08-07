@@ -374,8 +374,30 @@ input { font-family: inherit; }
 
 /* High contrast */
 [data-contrast="high"] {
-  --border: #64748b;
-  --text-muted: #cbd5e1;
+  --bg: #000000;
+  --surface: #0a0a0a;
+  --surface-2: #1a1a1a;
+  --border: #ffffff;
+  --text: #ffffff;
+  --text-muted: #e0e0e0;
+  --primary: #ffff00;
+  --primary-hover: #e6e600;
+  --primary-light: rgba(255,255,0,0.15);
+}
+[data-contrast="high"] .topbar,
+[data-contrast="high"] .controls-bar,
+[data-contrast="high"] .chat-panel,
+[data-contrast="high"] .a11y-panel,
+[data-contrast="high"] .toast,
+[data-contrast="high"] .nickname-card,
+[data-contrast="high"] .confirm-card {
+  border: 2px solid #ffffff;
+}
+[data-contrast="high"] .control-btn,
+[data-contrast="high"] .icon-btn,
+[data-contrast="high"] .chat-input,
+[data-contrast="high"] .chat-send {
+  border: 1px solid #ffffff;
 }
 [data-contrast="high"] .control-btn:focus-visible,
 [data-contrast="high"] .icon-btn:focus-visible,
@@ -383,7 +405,13 @@ input { font-family: inherit; }
 [data-contrast="high"] .chat-send:focus-visible {
   outline: 3px solid #fbbf24; outline-offset: 3px;
 }
-[data-contrast="high"] .chat-msg.other { border: 1px solid var(--border); }
+[data-contrast="high"] .chat-msg.other { border: 2px solid #ffffff; }
+[data-contrast="high"] .chat-msg.mine { border: 2px solid #ffff00; }
+[data-contrast="high"] .status-dot { box-shadow: 0 0 4px currentColor; }
+[data-contrast="high"] .stream-status {
+  background: rgba(0,0,0,0.85);
+  border: 1px solid #fff;
+}
 
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
@@ -392,19 +420,46 @@ input { font-family: inherit; }
 
 /* Large text */
 [data-text-size="large"] { font-size: 18px; }
-[data-text-size="large"] .chat-msg { font-size: 16px; }
-[data-text-size="large"] .control-btn { font-size: 15px; }
-[data-text-size="large"] .stream-status { font-size: 14px; }
+[data-text-size="large"] .chat-msg { font-size: 17px !important; }
+[data-text-size="large"] .chat-msg .msg-user { font-size: 15px !important; }
+[data-text-size="large"] .chat-msg .msg-time { font-size: 13px !important; }
+[data-text-size="large"] .chat-input { font-size: 16px !important; }
+[data-text-size="large"] .chat-send { font-size: 16px !important; }
+[data-text-size="large"] .control-btn { font-size: 16px !important; }
+[data-text-size="large"] .control-btn svg { width: 22px; height: 22px; }
+[data-text-size="large"] .icon-btn svg { width: 22px; height: 22px; }
+[data-text-size="large"] .icon-btn { width: 44px; height: 44px; }
+[data-text-size="large"] .logo { font-size: 20px !important; }
+[data-text-size="large"] .logo svg { width: 28px; height: 28px; }
+[data-text-size="large"] .stream-status { font-size: 15px !important; }
+[data-text-size="large"] .toast { font-size: 16px !important; }
+[data-text-size="large"] .a11y-panel h3 { font-size: 18px !important; }
+[data-text-size="large"] .a11y-panel label { font-size: 16px !important; }
+[data-text-size="large"] .a11y-panel input[type="checkbox"] { width: 22px; height: 22px; }
+[data-text-size="large"] .nickname-card h2 { font-size: 22px !important; }
+[data-text-size="large"] .nickname-card p { font-size: 16px !important; }
+[data-text-size="large"] .nickname-card input { font-size: 18px !important; }
+[data-text-size="large"] .nickname-card button { font-size: 17px !important; }
+[data-text-size="large"] .confirm-card h3 { font-size: 20px !important; }
+[data-text-size="large"] .confirm-card p { font-size: 16px !important; }
+[data-text-size="large"] .confirm-card button { font-size: 17px !important; }
+[data-text-size="large"] .file-card { font-size: 16px !important; }
+[data-text-size="large"] .file-card .file-size { font-size: 14px !important; }
+[data-text-size="large"] .kbd-hint { font-size: 14px !important; }
+[data-text-size="large"] .kbd-hint kbd { width: 28px; height: 28px; font-size: 14px !important; }
 
 /* Rotate button - only rotate canvas, keep overlays in place */
 .rotate-active #stream-canvas {
-  transform: rotate(90deg) scale(var(--zoom-scale, 1));
+  position: absolute !important;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%) rotate(90deg) scale(var(--zoom-scale, 1));
   transform-origin: center center;
   max-height: 100vw;
   max-width: 100vh;
 }
 .rotate-active .video-container {
   overflow: hidden;
+  position: relative;
 }
 /* When not rotated, zoom applies directly */
 #stream-canvas {
@@ -1704,7 +1759,7 @@ body.immersive .immersive-exit { display: flex; }
         e.touches[0].clientX - e.touches[1].clientX,
         e.touches[0].clientY - e.touches[1].clientY
       );
-      const scale = Math.max(1, Math.min(4, canvasScale * (newDist / pinchDist)));
+      const scale = Math.max(0.5, Math.min(5, canvasScale * (newDist / pinchDist)));
       canvasScale = scale;
       canvas.style.setProperty('--zoom-scale', scale);
       pinchDist = newDist;
@@ -1725,10 +1780,23 @@ body.immersive .immersive-exit { display: flex; }
       canvas.style.setProperty('--zoom-scale', 1);
       showToast(t('zoomReset'));
       lastTap = 0;
+    } else if (now - lastTap < 300 && canvasScale === 1 && e.touches.length === 0 && e.changedTouches.length === 1) {
+      // Triple-tap: toggle zoom 2x
+      canvasScale = 2;
+      canvas.style.setProperty('--zoom-scale', 2);
+      lastTap = 0;
     } else {
       lastTap = now;
     }
   }, { passive: true });
+
+  // Mouse wheel zoom (desktop)
+  videoContainer.addEventListener('wheel', function(e) {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? 0.9 : 1.1;
+    canvasScale = Math.max(0.5, Math.min(5, canvasScale * delta));
+    canvas.style.setProperty('--zoom-scale', canvasScale);
+  }, { passive: false });
 
   // Auto-reload in dev mode
   if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
