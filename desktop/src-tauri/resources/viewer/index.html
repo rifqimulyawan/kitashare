@@ -82,37 +82,43 @@ input { font-family: inherit; }
 .logo svg { width: 24px; height: 24px; color: var(--primary); transition: transform 0.3s var(--ease-bounce); }
 .logo:hover svg { transform: scale(1.15) rotate(-5deg); }
 .topbar-right { display: flex; align-items: center; gap: 8px; }
-.status-badge {
-  display: flex; align-items: center; gap: 6px;
-  padding: 6px 12px; border-radius: 20px; font-size: 13px; font-weight: 600;
-  transition: all 0.3s var(--ease);
-}
-.status-badge.connected { background: rgba(34,197,94,0.15); color: var(--success); }
-.status-badge.disconnected { background: rgba(239,68,68,0.15); color: var(--destructive); }
-.status-badge.connecting { background: rgba(245,158,11,0.15); color: var(--warning); }
-.status-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
-.status-badge.connected .status-dot { animation: pulse 2s infinite; }
-.status-badge.connecting .status-dot { animation: pulse 0.8s infinite; }
+/* Status badge - now floating on video, removed from topbar */
+.status-badge { display: none; }
 @keyframes pulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.8); } }
 
-/* Quality indicator */
-.quality-indicator {
-  display: flex; align-items: center; gap: 4px; padding: 4px 10px;
-  border-radius: 20px; font-size: 11px; font-weight: 700;
-  background: var(--surface-2); color: var(--text-muted);
-  transition: all 0.3s var(--ease);
+/* Floating status overlay (on video) */
+.stream-status {
+  position: absolute; top: 12px; left: 12px; z-index: 5;
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 12px; border-radius: 20px;
+  background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  color: #fff; font-size: 12px; font-weight: 600;
+  transition: opacity 0.3s var(--ease);
+  pointer-events: none;
 }
-.quality-indicator.excellent { color: var(--success); }
-.quality-indicator.good { color: var(--success); }
-.quality-indicator.fair { color: var(--warning); }
-.quality-indicator.poor { color: var(--destructive); }
-.quality-bars { display: flex; gap: 2px; align-items: flex-end; }
-.quality-bar { width: 3px; border-radius: 1px; background: currentColor; opacity: 0.3; }
-.quality-bar.active { opacity: 1; }
-.quality-bar:nth-child(1) { height: 4px; }
-.quality-bar:nth-child(2) { height: 7px; }
-.quality-bar:nth-child(3) { height: 10px; }
-.quality-bar:nth-child(4) { height: 13px; }
+.stream-status .status-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+.stream-status.connected { color: #22c55e; }
+.stream-status.disconnected { color: #ef4444; }
+.stream-status.connecting { color: #f59e0b; }
+.stream-status.connected .status-dot { animation: pulse 2s infinite; }
+.stream-status.connecting .status-dot { animation: pulse 0.8s infinite; }
+.stream-status .quality-bars { display: flex; gap: 2px; align-items: flex-end; margin-left: 4px; }
+.stream-status .quality-bar { width: 3px; border-radius: 1px; background: currentColor; opacity: 0.3; }
+.stream-status .quality-bar.active { opacity: 1; }
+.stream-status .quality-bar:nth-child(1) { height: 4px; }
+.stream-status .quality-bar:nth-child(2) { height: 7px; }
+.stream-status .quality-bar:nth-child(3) { height: 10px; }
+.stream-status .quality-bar:nth-child(4) { height: 13px; }
+.stream-status .fps-num { font-variant-numeric: tabular-nums; opacity: 0.9; }
+.stream-status.excellent { color: #22c55e; }
+.stream-status.good { color: #22c55e; }
+.stream-status.fair { color: #f59e0b; }
+.stream-status.poor { color: #ef4444; }
+
+/* Hide on very small screens */
+@media (max-width: 380px) {
+  .stream-status .status-label { display: none; }
+}
 
 /* Icon buttons */
 .icon-btn {
@@ -170,17 +176,6 @@ input { font-family: inherit; }
   animation: spin 0.8s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
-
-/* FPS overlay */
-.fps-overlay {
-  position: absolute; top: 12px; left: 12px;
-  padding: 4px 10px; border-radius: 8px;
-  background: rgba(0,0,0,0.6); color: #fff;
-  font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums;
-  opacity: 0; transition: opacity 0.3s var(--ease);
-  pointer-events: none; z-index: 5;
-}
-.fps-overlay.visible { opacity: 1; }
 
 /* Chat backdrop (mobile) */
 .chat-backdrop {
@@ -344,13 +339,14 @@ input { font-family: inherit; }
   .controls-bar { padding: 8px 12px calc(8px + var(--safe-bottom)); flex-wrap: wrap; gap: 6px; }
   .control-btn { padding: 6px 10px; font-size: 12px; }
   .quality-indicator { display: none; }
+  .stream-status { font-size: 11px; padding: 5px 10px; }
   .kbd-hint { display: none; }
 }
 
 /* Responsive: Small mobile */
 @media (max-width: 480px) {
-  .status-badge { font-size: 11px; padding: 4px 8px; }
-  .status-badge span:not(.status-dot) { display: none; }
+  .stream-status { font-size: 11px; padding: 5px 10px; }
+  .stream-status .status-label { display: none; }
   .control-btn span { display: none; }
   .control-btn { padding: 8px; }
   .control-btn svg { width: 20px; height: 20px; }
@@ -398,7 +394,7 @@ input { font-family: inherit; }
 [data-text-size="large"] { font-size: 18px; }
 [data-text-size="large"] .chat-msg { font-size: 16px; }
 [data-text-size="large"] .control-btn { font-size: 15px; }
-[data-text-size="large"] .status-badge { font-size: 14px; }
+[data-text-size="large"] .stream-status { font-size: 14px; }
 
 /* Rotate button - only rotate canvas, keep overlays in place */
 .rotate-active #stream-canvas {
@@ -424,6 +420,14 @@ body.immersive .topbar {
 body.immersive .controls-bar {
   transform: translateY(100%);
   transition: transform 0.3s var(--ease);
+}
+body.immersive .stream-status {
+  opacity: 0;
+  transition: opacity 0.3s var(--ease);
+}
+body.immersive .kbd-hint {
+  opacity: 0;
+  transition: opacity 0.3s var(--ease);
 }
 body.immersive .a11y-panel { display: none; }
 body.immersive .chat-backdrop,
@@ -668,17 +672,6 @@ body.immersive .immersive-exit { display: flex; }
     </div>
   </div>
   <div class="topbar-right">
-    <div id="quality-indicator" class="quality-indicator" style="display:none">
-      <div class="quality-bars">
-        <div class="quality-bar"></div><div class="quality-bar"></div>
-        <div class="quality-bar"></div><div class="quality-bar"></div>
-      </div>
-      <span id="fps-text">0</span> fps
-    </div>
-    <div id="status-badge" class="status-badge disconnected" role="status" aria-live="polite">
-      <span class="status-dot"></span>
-      <span id="status-text">Disconnected</span>
-    </div>
     <button class="icon-btn" id="lang-toggle" aria-label="Change language" title="Language">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
       <span id="lang-label" style="font-size:10px;font-weight:700">EN</span>
@@ -700,10 +693,19 @@ body.immersive .immersive-exit { display: flex; }
 <div class="main-area">
   <div class="video-container" id="video-container">
     <canvas id="stream-canvas" role="img" aria-label="Shared screen stream" tabindex="0"></canvas>
-    <div class="fps-overlay" id="fps-overlay">0 FPS</div>
     <div id="loading-overlay" class="loading-overlay">
       <div class="spinner"></div>
       <p id="loading-text">Connecting to host...</p>
+    </div>
+    <!-- Floating status + FPS overlay -->
+    <div class="stream-status disconnected" id="stream-status" role="status" aria-live="polite">
+      <span class="status-dot"></span>
+      <span class="status-label" id="status-text">Disconnected</span>
+      <div class="quality-bars" id="quality-bars" style="display:none">
+        <div class="quality-bar"></div><div class="quality-bar"></div>
+        <div class="quality-bar"></div><div class="quality-bar"></div>
+      </div>
+      <span class="fps-num" id="fps-text" style="display:none">0 fps</span>
     </div>
   </div>
 
@@ -834,8 +836,9 @@ body.immersive .immersive-exit { display: flex; }
   let ctx = canvas.getContext('2d');
   let loadingOverlay = document.getElementById('loading-overlay');
   let loadingText = document.getElementById('loading-text');
-  let statusBadge = document.getElementById('status-badge');
+  let statusBadge = document.getElementById('stream-status');
   let statusText = document.getElementById('status-text');
+  let qualityBars = document.getElementById('quality-bars');
   let chatPanel = document.getElementById('chat-panel');
   let chatMessages = document.getElementById('chat-messages');
   let chatInput = document.getElementById('chat-input');
@@ -843,8 +846,6 @@ body.immersive .immersive-exit { display: flex; }
   let chatEmpty = document.getElementById('chat-empty');
   let chatBackdrop = document.getElementById('chat-backdrop');
   let unreadBadge = document.getElementById('unread-badge');
-  let fpsOverlay = document.getElementById('fps-overlay');
-  let qualityIndicator = document.getElementById('quality-indicator');
   let fpsText = document.getElementById('fps-text');
   let toastContainer = document.getElementById('toast-container');
   let a11yPanel = document.getElementById('a11y-panel');
@@ -1159,8 +1160,8 @@ body.immersive .immersive-exit { display: flex; }
       chatSend.disabled = true;
       loadingText.textContent = t('streamEnded');
       loadingOverlay.classList.remove('hidden');
-      qualityIndicator.style.display = 'none';
-      fpsOverlay.classList.remove('visible');
+      qualityBars.style.display = 'none';
+      fpsText.style.display = 'none';
       setTimeout(connect, 2000);
     };
 
@@ -1203,13 +1204,10 @@ body.immersive .immersive-exit { display: flex; }
   }
 
   function updateFpsDisplay() {
-    fpsOverlay.textContent = currentFps + ' FPS';
-    fpsOverlay.classList.add('visible');
-    fpsText.textContent = currentFps;
-    qualityIndicator.style.display = 'flex';
+    fpsText.textContent = currentFps + ' fps';
 
     // Quality bars
-    const bars = qualityIndicator.querySelectorAll('.quality-bar');
+    const bars = qualityBars.querySelectorAll('.quality-bar');
     let activeBars = 1;
     let qualityClass = 'poor';
     if (currentFps >= 25) { activeBars = 4; qualityClass = 'excellent'; }
@@ -1219,7 +1217,9 @@ body.immersive .immersive-exit { display: flex; }
     bars.forEach(function(bar, i) {
       bar.classList.toggle('active', i < activeBars);
     });
-    qualityIndicator.className = 'quality-indicator ' + qualityClass;
+    // Update color class on stream-status
+    var currentStatus = connected ? 'connected' : 'disconnected';
+    statusBadge.className = 'stream-status ' + (qualityClass || currentStatus);
   }
 
   function handleTextMessage(text) {
@@ -1257,8 +1257,16 @@ body.immersive .immersive-exit { display: flex; }
   }
 
   function setStatus(status) {
-    statusBadge.className = 'status-badge ' + status;
+    statusBadge.className = 'stream-status ' + status;
     statusText.textContent = t(status === 'connecting' ? 'connecting' : status);
+    // Show/hide quality bars based on connection
+    if (status === 'connected') {
+      qualityBars.style.display = 'flex';
+      fpsText.style.display = 'inline';
+    } else {
+      qualityBars.style.display = 'none';
+      fpsText.style.display = 'none';
+    }
   }
 
   function flashScreen(color) {
