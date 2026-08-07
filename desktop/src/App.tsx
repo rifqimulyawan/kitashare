@@ -175,7 +175,7 @@ export default function App() {
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
             <Monitor className="h-5 w-5 text-primary-foreground" />
           </div>
-          <span className="font-brand text-lg font-bold">YourShare</span>
+          <span className="font-brand text-lg font-bold">KitaShare</span>
         </div>
         <div className="flex items-center gap-1">
           {isSharing && (

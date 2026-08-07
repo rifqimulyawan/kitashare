@@ -30,5 +30,5 @@ pub fn run() {
             commands::remove_file,
         ])
         .run(tauri::generate_context!())
-        .expect("error while running YourShare");
+        .expect("error while running KitaShare");
 }

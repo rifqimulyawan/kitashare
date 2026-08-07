@@ -1,4 +1,4 @@
-# YourShare — Comprehensive Build Plan
+# KitaShare — Comprehensive Build Plan
 
 > Screen sharing reimagined: cross-platform, real-time, accessible, multilingual, and beautiful.
 
@@ -6,11 +6,11 @@
 
 ## 1. Project Overview
 
-**YourShare** is a cross-platform screen sharing application built with Tauri 2 + React 18 + WebRTC, designed to replace ScreenTask with a faster, more robust, more accessible, and more beautiful alternative.
+**KitaShare** is a cross-platform screen sharing application built with Tauri 2 + React 18 + WebRTC, designed to replace ScreenTask with a faster, more robust, more accessible, and more beautiful alternative.
 
 ### Comparison with ScreenTask
 
-| Feature | ScreenTask | YourShare |
+| Feature | ScreenTask | KitaShare |
 |---|---|---|
 | Platform | Windows only (.NET 4.5) | Win + macOS + Linux + Android + iOS |
 | Streaming | MJPEG screenshots (~500ms) | WebRTC real-time (<100ms) |
@@ -34,7 +34,7 @@
 ## 2. Architecture
 
 ```
-YourShare/
+KitaShare/
 ├── desktop/                         # Tauri 2 host application
 │   ├── src/                         # React UI (host control panel)
 │   │   ├── App.tsx                  # Root component + router
@@ -288,7 +288,7 @@ YourShare/
 
 ### 4.3 Component Patterns (from rmflask → React)
 
-| rmflask Pattern | YourShare React Equivalent |
+| rmflask Pattern | KitaShare React Equivalent |
 |---|---|
 | `skeleton.css` shimmer | `<Skeleton />` component with shimmer animation |
 | `dark-mode.js` toggle | `useTheme()` hook + `<ThemeToggle />` component |
@@ -418,7 +418,7 @@ Accessibility Settings
 ```json
 {
   "common": {
-    "appName": "YourShare",
+    "appName": "KitaShare",
     "start": "Start",
     "stop": "Stop",
     "settings": "Settings",
@@ -717,7 +717,7 @@ rmshare-apps/
 
 ## 13. Success Metrics
 
-| Metric | ScreenTask | YourShare Target |
+| Metric | ScreenTask | KitaShare Target |
 |---|---|---|
 | Latency | ~500ms | <100ms |
 | Platforms | 1 (Windows) | 5+ (Win/Mac/Linux/Android/iOS) |

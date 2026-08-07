@@ -1,13 +1,13 @@
 [package]
-name = "yourshare"
+name = "kitashare"
 version = "1.0.0"
-description = "YourShare - Cross-Platform Screen Sharing"
-authors = ["YourShare"]
+description = "KitaShare - Cross-Platform Screen Sharing"
+authors = ["KitaShare"]
 edition = "2021"
 rust-version = "1.70"
 
 [lib]
-name = "yourshare_lib"
+name = "kitashare_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

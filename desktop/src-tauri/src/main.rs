@@ -1,5 +1,5 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
-    yourshare_lib::run()
+    kitashare_lib::run()
 }

@@ -4,7 +4,7 @@ import { initReactI18next } from "react-i18next";
 const resources = {
   en: {
     translation: {
-      appName: "YourShare",
+      appName: "KitaShare",
       tagline: "Share your screen instantly",
       start: "Start",
       stop: "Stop",
@@ -53,7 +53,7 @@ const resources = {
   },
   id: {
     translation: {
-      appName: "YourShare",
+      appName: "KitaShare",
       tagline: "Bagikan layar Anda secara instan",
       start: "Mulai",
       stop: "Berhenti",
@@ -102,7 +102,7 @@ const resources = {
   },
   ar: {
     translation: {
-      appName: "YourShare",
+      appName: "KitaShare",
       tagline: "شارك شاشتك فوراً",
       start: "ابدأ",
       stop: "إيقاف",
@@ -151,7 +151,7 @@ const resources = {
   },
 };
 
-const savedLang = localStorage.getItem("yourshare-lang") || "en";
+const savedLang = localStorage.getItem("kitashare-lang") || "en";
 
 i18n.use(initReactI18next).init({
   resources,
@@ -168,7 +168,7 @@ export const languages = [
 
 export function changeLanguage(lang: string) {
   i18n.changeLanguage(lang);
-  localStorage.setItem("yourshare-lang", lang);
+  localStorage.setItem("kitashare-lang", lang);
   const dir = languages.find((l) => l.code === lang)?.dir || "ltr";
   document.documentElement.dir = dir;
   document.documentElement.lang = lang;

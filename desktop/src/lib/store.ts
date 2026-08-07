@@ -7,7 +7,7 @@ interface ThemeState {
 }
 
 const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-const saved = localStorage.getItem("yourshare-theme");
+const saved = localStorage.getItem("kitashare-theme");
 const initialDark = saved ? saved === "dark" : prefersDark;
 
 if (initialDark) document.documentElement.classList.add("dark");
@@ -22,7 +22,7 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
     } else {
       document.documentElement.classList.remove("dark");
     }
-    localStorage.setItem("yourshare-theme", isDark ? "dark" : "light");
+    localStorage.setItem("kitashare-theme", isDark ? "dark" : "light");
   },
   setDark: (isDark: boolean) => {
     set({ isDark });
@@ -31,7 +31,7 @@ export const useThemeStore = create<ThemeState>((set, get) => ({
     } else {
       document.documentElement.classList.remove("dark");
     }
-    localStorage.setItem("yourshare-theme", isDark ? "dark" : "light");
+    localStorage.setItem("kitashare-theme", isDark ? "dark" : "light");
   },
 }));
 
@@ -46,10 +46,10 @@ interface AccessibilityState {
   toggleVisualNotifications: () => void;
 }
 
-const savedHC = localStorage.getItem("yourshare-contrast") === "high";
-const savedLT = localStorage.getItem("yourshare-text-size") === "large";
-const savedRM = localStorage.getItem("yourshare-reduced-motion") === "1";
-const savedVN = localStorage.getItem("yourshare-visual-notify") !== "0";
+const savedHC = localStorage.getItem("kitashare-contrast") === "high";
+const savedLT = localStorage.getItem("kitashare-text-size") === "large";
+const savedRM = localStorage.getItem("kitashare-reduced-motion") === "1";
+const savedVN = localStorage.getItem("kitashare-visual-notify") !== "0";
 
 if (savedHC) document.documentElement.setAttribute("data-contrast", "high");
 if (savedLT) document.documentElement.setAttribute("data-text-size", "large");
@@ -63,23 +63,23 @@ export const useAccessibilityStore = create<AccessibilityState>((set, get) => ({
     const v = !get().highContrast;
     set({ highContrast: v });
     document.documentElement.setAttribute("data-contrast", v ? "high" : "normal");
-    localStorage.setItem("yourshare-contrast", v ? "high" : "normal");
+    localStorage.setItem("kitashare-contrast", v ? "high" : "normal");
   },
   toggleLargeText: () => {
     const v = !get().largeText;
     set({ largeText: v });
     document.documentElement.setAttribute("data-text-size", v ? "large" : "normal");
-    localStorage.setItem("yourshare-text-size", v ? "large" : "normal");
+    localStorage.setItem("kitashare-text-size", v ? "large" : "normal");
   },
   toggleReducedMotion: () => {
     const v = !get().reducedMotion;
     set({ reducedMotion: v });
-    localStorage.setItem("yourshare-reduced-motion", v ? "1" : "0");
+    localStorage.setItem("kitashare-reduced-motion", v ? "1" : "0");
   },
   toggleVisualNotifications: () => {
     const v = !get().visualNotifications;
     set({ visualNotifications: v });
-    localStorage.setItem("yourshare-visual-notify", v ? "1" : "0");
+    localStorage.setItem("kitashare-visual-notify", v ? "1" : "0");
   },
 }));
 
@@ -132,24 +132,24 @@ interface UserProfile {
   setBio: (bio: string) => void;
 }
 
-const savedName = localStorage.getItem("yourshare-profile-name") || "";
-const savedAvatar = localStorage.getItem("yourshare-profile-avatar") || "";
-const savedBio = localStorage.getItem("yourshare-profile-bio") || "";
+const savedName = localStorage.getItem("kitashare-profile-name") || "";
+const savedAvatar = localStorage.getItem("kitashare-profile-avatar") || "";
+const savedBio = localStorage.getItem("kitashare-profile-bio") || "";
 
 export const useProfileStore = create<UserProfile>((set) => ({
   name: savedName,
   avatar: savedAvatar,
   bio: savedBio,
   setName: (name) => {
-    localStorage.setItem("yourshare-profile-name", name);
+    localStorage.setItem("kitashare-profile-name", name);
     set({ name });
   },
   setAvatar: (avatar) => {
-    localStorage.setItem("yourshare-profile-avatar", avatar);
+    localStorage.setItem("kitashare-profile-avatar", avatar);
     set({ avatar });
   },
   setBio: (bio) => {
-    localStorage.setItem("yourshare-profile-bio", bio);
+    localStorage.setItem("kitashare-profile-bio", bio);
     set({ bio });
   },
 }));

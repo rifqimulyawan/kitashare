@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "YourShare",
+  "productName": "KitaShare",
   "version": "1.0.0",
-  "identifier": "com.yourshare.app",
+  "identifier": "com.kitashare.app",
   "build": {
     "frontendDist": "./resources",
     "devUrl": "http://localhost:5174",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "YourShare",
+        "title": "KitaShare",
         "width": 1000,
         "height": 700,
         "minWidth": 700,
@@ -38,7 +38,7 @@
       "icons/icon.ico"
     ],
     "category": "Utility",
-    "shortDescription": "YourShare - Fast Screen Sharing",
+    "shortDescription": "KitaShare - Fast Screen Sharing",
     "longDescription": "Cross-platform screen sharing with real-time streaming, chat, and accessibility support.",
     "windows": {
       "wix": {

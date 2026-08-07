@@ -1838,6 +1838,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "kitashare"
+version = "1.0.0"
+dependencies = [
+ "axum",
+ "futures-util",
+ "image",
+ "local-ip-address",
+ "parking_lot",
+ "scrap",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+ "tauri-plugin-shell",
+ "tokio",
+]
+
+[[package]]
 name = "libappindicator"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5021,25 +5040,6 @@ dependencies = [
  "quote",
  "syn 2.0.119",
  "synstructure",
-]
-
-[[package]]
-name = "yourshare"
-version = "1.0.0"
-dependencies = [
- "axum",
- "futures-util",
- "image",
- "local-ip-address",
- "parking_lot",
- "scrap",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-dialog",
- "tauri-plugin-shell",
- "tokio",
 ]
 
 [[package]]
