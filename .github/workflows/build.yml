@@ -8,6 +8,9 @@ on:
     branches: [main, master]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 env:
   CARGO_INCREMENTAL: 0
 
@@ -28,12 +31,12 @@ jobs:
 
     runs-on: ${{ matrix.platform }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
           cache-dependency-path: desktop/package-lock.json
 
@@ -51,7 +54,7 @@ jobs:
         if: matrix.platform == 'ubuntu-22.04'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libx11-dev libxcomposite-dev libxdamage-dev libxrandr-dev libxi-dev libxtst-dev libasound2-dev libcap-dev
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libx11-dev libxcomposite-dev libxdamage-dev libxrandr-dev libxi-dev libxtst-dev libasound2-dev libcap-dev libxcb-randr0-dev libxcb-shm0-dev libxcb1-dev
 
       - name: Install frontend dependencies
         working-directory: desktop
@@ -69,3 +72,4 @@ jobs:
           releaseDraft: true
           prerelease: false
           args: --target ${{ matrix.target }}
+          updaterJsonPreferNsis: true
