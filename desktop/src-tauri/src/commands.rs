@@ -822,7 +822,18 @@ pub fn update_internet_profile(
         "hostBio": bio,
     });
     let body_str = body.to_string();
-    let _ = blocking_post_json(&info_url, &body_str, &publisher_token, 5);
+    match blocking_post_json(&info_url, &body_str, &publisher_token, 5) {
+        Ok((resp_body, status)) => {
+            if status >= 200 && status < 300 {
+                eprintln!("[Internet] Profile update OK");
+            } else {
+                eprintln!("[Internet] Profile update failed: {} - {}", status, resp_body);
+            }
+        }
+        Err(e) => {
+            eprintln!("[Internet] Profile update transport error: {}", e);
+        }
+    }
     Ok(())
 }
 

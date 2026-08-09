@@ -244,7 +244,7 @@ export function updateSessionInfo(sessionId: string, info: {
   if (info.width !== undefined) session.width = info.width;
   if (info.height !== undefined) session.height = info.height;
   if (info.fps !== undefined) session.fps = info.fps;
-  if (info.hostName !== undefined) { session.hostName = sanitizeNickname(info.hostName); profileChanged = true; }
+  if (info.hostName !== undefined) { session.hostName = sanitizeNickname(info.hostName) || 'Host'; profileChanged = true; }
   if (info.hostAvatar !== undefined) { session.hostAvatar = sanitizeAvatar(info.hostAvatar); profileChanged = true; }
   if (info.hostBio !== undefined) { session.hostBio = sanitizeBio(info.hostBio); profileChanged = true; }
   session.lastActivity = Date.now();

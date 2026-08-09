@@ -1347,8 +1347,21 @@ body.immersive .immersive-exit { display: flex; }
       qualityBars.style.display = 'none';
       fpsText.style.display = 'none';
       eventSource.close();
-      if (reconnectDelay < 10000) reconnectDelay *= 1.5;
-      reconnectTimer = setTimeout(connect, reconnectDelay);
+      // Check if session still exists before reconnecting
+      fetch(baseUrl + '/api/info/' + sessionId).then(function(r) {
+        if (r.status === 404) {
+          // Session is gone — stop reconnecting
+          stopPolling();
+          setStatus('disconnected');
+          loadingText.textContent = t('streamEnded');
+          return;
+        }
+        if (reconnectDelay < 10000) reconnectDelay *= 1.5;
+        reconnectTimer = setTimeout(connect, reconnectDelay);
+      }).catch(function() {
+        if (reconnectDelay < 10000) reconnectDelay *= 1.5;
+        reconnectTimer = setTimeout(connect, reconnectDelay);
+      });
     };
   }
 
