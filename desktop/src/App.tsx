@@ -45,6 +45,7 @@ import {
   onRaiseHand,
   onChatMessage,
   shareFiles,
+  getSharedFiles,
   clearFiles,
   removeFile,
   openFileDialog,
@@ -146,6 +147,11 @@ export default function App() {
       }
       await minDelay;
       setSharing(info);
+      // Sync any preserved shared files from backend
+      try {
+        const files = await getSharedFiles();
+        if (files.length > 0) setSharedFiles(files);
+      } catch {}
     } catch (e: any) {
       await new Promise((r) => setTimeout(r, 3000));
       setError(e?.message || String(e));
@@ -270,12 +276,11 @@ export default function App() {
     URL.revokeObjectURL(url);
   }, [chatMessages, t]);
 
-  // Clear chat and files when sharing stops
+  // Clear chat when sharing stops (files are preserved for reconnection)
   useEffect(() => {
     if (!isSharing) {
       setChatMessages([]);
       setShowChat(false);
-      setSharedFiles([]);
       setShowFiles(false);
     }
   }, [isSharing]);
@@ -793,7 +798,7 @@ export default function App() {
                 </Button>
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
               {chatMessages.length === 0 ? (
                 <div className="flex h-full items-center justify-center text-center text-sm text-muted-foreground">
                   {t("host.noMessages")}
@@ -801,10 +806,10 @@ export default function App() {
               ) : (
                 chatMessages.map((msg, i) => (
                   <div key={i} className={`flex flex-col ${msg.subtype === "rename" || msg.subtype === "raise_hand" || msg.subtype === "file_shared" ? "items-center" : msg.isSelf ? "items-end" : "items-start"}`}>
-                    <div className={`max-w-[85%] rounded-xl px-3 py-2 text-sm ${
-                      msg.subtype === "rename" ? "w-full bg-muted/50 border border-border text-center text-xs italic text-muted-foreground" :
-                      msg.subtype === "raise_hand" ? "w-full bg-warning/15 border border-warning text-center text-xs font-semibold text-warning" :
-                      msg.subtype === "file_shared" ? "w-full bg-muted/50 border border-border text-left text-xs text-muted-foreground" :
+                    <div className={`max-w-[88%] rounded-lg px-2.5 py-1.5 text-[13px] leading-tight ${
+                      msg.subtype === "rename" ? "w-full bg-muted/50 border border-border text-center text-[11px] italic text-muted-foreground" :
+                      msg.subtype === "raise_hand" ? "w-full bg-warning/15 border border-warning text-center text-[11px] font-semibold text-warning" :
+                      msg.subtype === "file_shared" ? "w-full bg-muted/50 border border-border text-left text-[11px] text-muted-foreground" :
                       msg.isSelf ? "bg-primary text-primary-foreground" : "bg-muted"
                     }`}>
                       {msg.subtype === "rename" ? (
@@ -812,26 +817,26 @@ export default function App() {
                       ) : msg.subtype === "raise_hand" ? (
                         <div>{msg.text}</div>
                       ) : msg.subtype === "file_shared" ? (
-                        <div className="flex items-center gap-1.5">
-                          <FolderOpen className="h-4 w-4 shrink-0 text-primary" />
-                          <span>{t("host.fileSharedMsg", { user: msg.user, files: msg.text })}</span>
+                        <div className="flex items-center gap-1.5 overflow-hidden">
+                          <FolderOpen className="h-3.5 w-3.5 shrink-0 text-primary" />
+                          <span className="truncate">{t("host.fileSharedMsg", { user: msg.user, files: msg.text })}</span>
                         </div>
                       ) : (
                         <>
-                      <div className="mb-0.5 text-xs font-semibold opacity-70">{msg.isSelf ? t("host.you") : msg.user}</div>
+                      <div className="mb-0.5 text-[10px] font-semibold opacity-70">{msg.isSelf ? t("host.you") : msg.user}</div>
                       {msg.subtype === "meme" ? (
-                        <img src={msg.text} alt="Meme" className="mt-1 max-w-full rounded-lg" loading="lazy" />
+                        <img src={msg.text} alt="Meme" className="mt-1 max-h-[120px] max-w-full rounded-md object-cover" loading="lazy" />
                       ) : msg.subtype === "quote" ? (
                         <div className="border-l-2 border-primary/50 pl-2 italic">
-                          <div>{msg.text.split("|||")[0]}</div>
-                          <div className="mt-1 text-xs not-italic opacity-70">— {msg.text.split("|||")[1] || t("host.unknown")}</div>
+                          <div className="text-[12px]">{msg.text.split("|||")[0]}</div>
+                          <div className="mt-0.5 text-[10px] not-italic opacity-70">— {msg.text.split("|||")[1] || t("host.unknown")}</div>
                         </div>
                       ) : (
                         <div>{msg.text}</div>
                       )}
                       </>
                       )}
-                      <div className="mt-1 text-[10px] opacity-50">
+                      <div className="mt-0.5 text-[9px] opacity-50">
                         {new Date(msg.timestamp * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                       </div>
                     </div>

@@ -83,6 +83,10 @@ export async function shareFiles(files: string[]): Promise<SharedFileInfo[]> {
   return invoke<SharedFileInfo[]>("share_files", { files });
 }
 
+export async function getSharedFiles(): Promise<SharedFileInfo[]> {
+  return invoke<SharedFileInfo[]>("get_shared_files");
+}
+
 export async function clearFiles(): Promise<void> {
   return invoke("clear_files");
 }

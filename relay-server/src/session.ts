@@ -31,6 +31,7 @@ export interface SessionData {
   lastActivity: number;
   files: Array<{ id: number; name: string; size: number }>;
   fileContents: Map<number, Buffer>;
+  paused: boolean;
 }
 
 const SESSIONS = new Map<string, SessionData>();
@@ -81,6 +82,7 @@ export function createSession(sessionId: string, info: {
     lastActivity: Date.now(),
     files: [],
     fileContents: new Map(),
+    paused: false,
   };
 
   SESSIONS.set(sessionId, session);
@@ -93,6 +95,46 @@ export function getSession(sessionId: string): SessionData | null {
 
 export function deleteSession(sessionId: string): void {
   cleanupSession(sessionId);
+}
+
+export function pauseSession(sessionId: string): void {
+  const session = getSession(sessionId);
+  if (!session) return;
+  session.paused = true;
+  session.lastFrame = null;
+  session.lastActivity = Date.now();
+  // Notify viewers that stream is paused
+  const payload = `data: ${JSON.stringify({ type: 'stream_paused' })}\n\n`;
+  for (const res of session.viewers) {
+    try { res.write(payload); } catch {}
+  }
+}
+
+export function resumeSession(sessionId: string, info: {
+  width: number;
+  height: number;
+  fps: number;
+  hostName: string;
+  hostAvatar: string;
+  hostBio: string;
+}): SessionData | null {
+  const session = getSession(sessionId);
+  if (!session) return null;
+  session.paused = false;
+  session.width = info.width;
+  session.height = info.height;
+  session.fps = info.fps;
+  session.hostName = sanitizeNickname(info.hostName);
+  session.hostAvatar = sanitizeAvatar(info.hostAvatar);
+  session.hostBio = sanitizeBio(info.hostBio);
+  session.lastActivity = Date.now();
+  session.lastFrame = null;
+  // Notify viewers that stream is resumed
+  const payload = `data: ${JSON.stringify({ type: 'stream_resumed' })}\n\n`;
+  for (const res of session.viewers) {
+    try { res.write(payload); } catch {}
+  }
+  return session;
 }
 
 function cleanupSession(sessionId: string): void {

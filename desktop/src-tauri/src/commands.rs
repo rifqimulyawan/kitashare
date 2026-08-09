@@ -300,6 +300,11 @@ pub fn start_sharing(
     *state.server_state.lock() = Some(server_state);
     state.is_sharing.store(true, Ordering::Relaxed);
 
+    // Re-sync existing shared files to relay if any (preserved from previous session)
+    if !state.shared_files.lock().is_empty() {
+        sync_files_to_relay(&state);
+    }
+
     let ip = state.local_ip.clone();
     let internet_url = state.internet_relay_url.lock().clone();
     Ok(SessionInfo {
@@ -320,11 +325,11 @@ pub fn start_sharing(
 pub fn stop_sharing(state: State<ShareState>) -> Result<(), String> {
     state.is_sharing.store(false, Ordering::Relaxed);
 
-    // Notify all viewers that stream is ending
+    // Notify all viewers that stream is paused (not ended — host may resume)
     if let Some(ss) = state.server_state.lock().as_ref() {
-        let end_msg = serde_json::json!({"type": "stream_ended"});
-        if let Ok(end_str) = serde_json::to_string(&end_msg) {
-            let _ = ss.chat_tx.send(end_str);
+        let pause_msg = serde_json::json!({"type": "stream_paused"});
+        if let Ok(pause_str) = serde_json::to_string(&pause_msg) {
+            let _ = ss.chat_tx.send(pause_str);
         }
     }
 
@@ -368,7 +373,7 @@ pub fn stop_sharing(state: State<ShareState>) -> Result<(), String> {
 
     *state.server_state.lock() = None;
     *state.active_port.lock() = None;
-    state.shared_files.lock().clear();
+    // Note: shared_files are NOT cleared — preserved for reconnection
     state.client_count.store(0, Ordering::Relaxed);
 
     Ok(())
@@ -537,6 +542,12 @@ fn send_file_shared_notification(state: &ShareState, file_names: &str) {
                 .send().await;
         });
     }
+}
+
+#[tauri::command]
+pub fn get_shared_files(state: State<ShareState>) -> Result<Vec<SharedFileInfo>, String> {
+    let shared = state.shared_files.lock();
+    Ok(shared.iter().map(|f| SharedFileInfo { id: f.id, name: f.name.clone(), size: f.size }).collect())
 }
 
 #[tauri::command]

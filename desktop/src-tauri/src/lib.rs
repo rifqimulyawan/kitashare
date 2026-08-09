@@ -26,6 +26,7 @@ pub fn run() {
             commands::get_local_ip,
             commands::get_available_displays,
             commands::share_files,
+            commands::get_shared_files,
             commands::clear_files,
             commands::remove_file,
             commands::start_internet_sharing,

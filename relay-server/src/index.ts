@@ -38,6 +38,8 @@ import {
   createSession,
   getSession,
   deleteSession,
+  pauseSession,
+  resumeSession,
   addViewer,
   removeViewer,
   updateFrame,
@@ -200,6 +202,11 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
       res.write(filesPayload);
     }
 
+    // If session is paused, notify viewer
+    if (session.paused) {
+      res.write(`data: ${JSON.stringify({ type: 'stream_paused' })}\n\n`);
+    }
+
     // Add viewer to session
     if (!addViewer(sessionId, res)) {
       res.write(`data: ${JSON.stringify({ type: 'error', message: 'Session full' })}\n\n`);
@@ -250,6 +257,7 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
         bio: session.hostBio,
       },
       files: session.files.length,
+      paused: session.paused,
     });
     return;
   }
@@ -369,19 +377,40 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
       const body = await readBody(req, 256 * 1024);
       const info = JSON.parse(body.toString());
 
-      // Delete existing session if any (re-publish)
-      if (getSession(sessionId)) {
-        deleteSession(sessionId);
+      // If session exists and is paused, resume it (preserves chat history & files)
+      const existing = getSession(sessionId);
+      if (existing) {
+        if (existing.paused) {
+          resumeSession(sessionId, {
+            width: info.width || 1920,
+            height: info.height || 1080,
+            fps: info.fps || 30,
+            hostName: info.hostName || 'Host',
+            hostAvatar: info.hostAvatar || '',
+            hostBio: info.hostBio || '',
+          });
+        } else {
+          // Session is active — delete and recreate (re-publish)
+          deleteSession(sessionId);
+          createSession(sessionId, {
+            width: info.width || 1920,
+            height: info.height || 1080,
+            fps: info.fps || 30,
+            hostName: info.hostName || 'Host',
+            hostAvatar: sanitizeAvatar(info.hostAvatar || ''),
+            hostBio: sanitizeBio(info.hostBio || ''),
+          });
+        }
+      } else {
+        createSession(sessionId, {
+          width: info.width || 1920,
+          height: info.height || 1080,
+          fps: info.fps || 30,
+          hostName: info.hostName || 'Host',
+          hostAvatar: sanitizeAvatar(info.hostAvatar || ''),
+          hostBio: sanitizeBio(info.hostBio || ''),
+        });
       }
-
-      const session = createSession(sessionId, {
-        width: info.width || 1920,
-        height: info.height || 1080,
-        fps: info.fps || 30,
-        hostName: info.hostName || 'Host',
-        hostAvatar: sanitizeAvatar(info.hostAvatar || ''),
-        hostBio: sanitizeBio(info.hostBio || ''),
-      });
 
       sendJSON(res, 200, {
         ok: true,
@@ -496,7 +525,8 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
       return;
     }
 
-    deleteSession(sessionId);
+    // Pause session instead of deleting — preserves chat history and files for reconnection
+    pauseSession(sessionId);
     sendJSON(res, 200, { ok: true });
     return;
   }
