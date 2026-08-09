@@ -366,7 +366,7 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
     }
 
     try {
-      const body = await readBody(req, 4096);
+      const body = await readBody(req, 256 * 1024);
       const info = JSON.parse(body.toString());
 
       // Delete existing session if any (re-publish)
@@ -445,7 +445,7 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
     }
 
     try {
-      const body = await readBody(req, 4096);
+      const body = await readBody(req, 256 * 1024);
       const info = JSON.parse(body.toString());
       if (info.hostAvatar !== undefined) info.hostAvatar = sanitizeAvatar(info.hostAvatar);
       if (info.hostBio !== undefined) info.hostBio = sanitizeBio(info.hostBio);

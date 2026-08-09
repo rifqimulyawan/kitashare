@@ -41,7 +41,7 @@ export function sanitizeChatMessage(msg: string): string {
 // --- Avatar URL sanitization ---
 const ALLOWED_AVATAR_PROTOCOLS = ['https:', 'data:'];
 export function sanitizeAvatar(url: string): string {
-  const cleaned = url.trim().slice(0, 500);
+  const cleaned = url.trim().slice(0, 100000);
   if (cleaned === '') return '';
   try {
     const parsed = new URL(cleaned);
