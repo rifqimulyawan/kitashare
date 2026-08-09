@@ -57,7 +57,7 @@ import {
 
 export default function App() {
   const { t } = useTranslation();
-  const { isSharing, sessionInfo, error, loading, setSharing, setError, setLoading, updateClients } =
+  const { isSharing, sessionInfo, error, setSharing, setError, updateClients } =
     useShareStore();
   const a11y = useAccessibilityStore();
   const profile = useProfileStore();
@@ -87,6 +87,7 @@ export default function App() {
   const [pickerSearch, setPickerSearch] = useState("");
   const [shareMode, setShareMode] = useState<"lan" | "internet">("lan");
   const [relayUrl, setRelayUrl] = useState(localStorage.getItem("kitashare-relay-url") || "https://kitashare.rmdigital.co.id");
+  const [isStarting, setIsStarting] = useState(false);
 
   useEffect(() => {
     getAvailableDisplays()
@@ -95,8 +96,9 @@ export default function App() {
   }, []);
 
   const handleStart = useCallback(async () => {
-    setLoading(true);
+    setIsStarting(true);
     setError(null);
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
     try {
       const minDelay = new Promise((r) => setTimeout(r, 3000));
       let info: SessionInfo;
@@ -121,8 +123,10 @@ export default function App() {
     } catch (e: any) {
       await new Promise((r) => setTimeout(r, 3000));
       setError(e?.message || String(e));
+    } finally {
+      setIsStarting(false);
     }
-  }, [selectedDisplay, quality, fps, port, setSharing, setError, setLoading, profile, shareMode, relayUrl]);
+  }, [selectedDisplay, quality, fps, port, setSharing, setError, profile, shareMode, relayUrl]);
 
   // Push profile updates to relay server when internet sharing
   useEffect(() => {
@@ -354,11 +358,21 @@ export default function App() {
       <main className="flex flex-1 items-start justify-center p-4 sm:p-6 lg:p-8">
         <div className="w-full max-w-2xl space-y-6">
           {/* Loading Overlay */}
-          {loading && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-              <div className="flex flex-col items-center gap-4 rounded-2xl border border-border bg-card p-8 shadow-2xl">
-                <Spinner className="h-10 w-10 text-primary" />
-                <p className="text-lg font-semibold text-foreground">{t("common.startingShare")}</p>
+          {isStarting && (
+            <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-md">
+              <div className="flex flex-col items-center gap-6 rounded-3xl border border-border bg-card p-10 shadow-2xl animate-in fade-in zoom-in-95 duration-300">
+                <div className="relative h-16 w-16">
+                  <div className="absolute inset-0 rounded-full border-4 border-muted" />
+                  <div className="absolute inset-0 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+                </div>
+                <div className="flex flex-col items-center gap-2">
+                  <p className="text-lg font-bold text-foreground">{t("common.startingShare")}</p>
+                  <div className="flex gap-1.5">
+                    <span className="h-2 w-2 rounded-full bg-primary animate-bounce [animation-delay:0ms]" />
+                    <span className="h-2 w-2 rounded-full bg-primary animate-bounce [animation-delay:150ms]" />
+                    <span className="h-2 w-2 rounded-full bg-primary animate-bounce [animation-delay:300ms]" />
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -523,7 +537,7 @@ export default function App() {
               )}
 
               {/* Start/Stop Button */}
-              {loading ? (
+              {isStarting ? (
                 <Button disabled className="w-full" size="lg">
                   <Spinner className="h-5 w-5" />
                   {t("common.loading")}
