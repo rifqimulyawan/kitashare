@@ -14,7 +14,6 @@ use uuid::Uuid;
 fn blocking_client(timeout_secs: u64) -> reqwest::blocking::Client {
     reqwest::blocking::Client::builder()
         .timeout(std::time::Duration::from_secs(timeout_secs))
-        .http1_only()
         .build()
         .unwrap_or_else(|_| reqwest::blocking::Client::new())
 }
@@ -22,9 +21,40 @@ fn blocking_client(timeout_secs: u64) -> reqwest::blocking::Client {
 fn async_client(timeout_secs: u64) -> reqwest::Client {
     reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(timeout_secs))
-        .http1_only()
         .build()
         .unwrap_or_else(|_| reqwest::Client::new())
+}
+
+fn blocking_post_json(url: &str, body: &str, token: &str, timeout_secs: u64) -> Result<(String, u16), String> {
+    let client = blocking_client(timeout_secs);
+    let mut req = client.post(url).header("Content-Type", "application/json").body(body.to_string());
+    if !token.is_empty() {
+        req = req.header("X-Publisher-Token", token);
+    }
+    match req.send() {
+        Ok(resp) => {
+            let status = resp.status().as_u16();
+            let body = resp.text().unwrap_or_default();
+            Ok((body, status))
+        }
+        Err(e) => Err(format!("Transport error: {}", e)),
+    }
+}
+
+fn blocking_post_bytes(url: &str, data: &[u8], token: &str, timeout_secs: u64) -> Result<(String, u16), String> {
+    let client = blocking_client(timeout_secs);
+    let mut req = client.post(url).header("Content-Type", "application/octet-stream").body(data.to_vec());
+    if !token.is_empty() {
+        req = req.header("X-Publisher-Token", token);
+    }
+    match req.send() {
+        Ok(resp) => {
+            let status = resp.status().as_u16();
+            let body = resp.text().unwrap_or_default();
+            Ok((body, status))
+        }
+        Err(e) => Err(format!("Transport error: {}", e)),
+    }
 }
 
 pub struct ShareState {
@@ -329,9 +359,7 @@ pub fn stop_sharing(state: State<ShareState>) -> Result<(), String> {
         state.internet_relay_url.lock().as_ref(),
     ) {
         let url = format!("{}/api/publish/{}/stop", relay_url, session_id);
-        let _ = ureq::post(&url)
-            .timeout(std::time::Duration::from_secs(5))
-            .send_string("");
+        let _ = blocking_post_json(&url, "", "", 5);
     }
 
     *state.internet_session_id.lock() = None;
@@ -440,12 +468,8 @@ fn sync_files_to_relay(state: &ShareState) {
         let files_json = serde_json::json!({ "files": files }).to_string();
         let url = format!("{}/api/publish/{}/files", relay_url, session_id);
         eprintln!("[Internet] Syncing {} files to relay", files.len());
-        match ureq::post(&url)
-            .set("Content-Type", "application/json")
-            .set("X-Publisher-Token", &publisher_token)
-            .timeout(std::time::Duration::from_secs(5))
-            .send_string(&files_json) {
-            Ok(resp) => eprintln!("[Internet] Files sync OK: {}", resp.status()),
+        match blocking_post_json(&url, &files_json, &publisher_token, 5) {
+            Ok((_, status)) => eprintln!("[Internet] Files sync OK: {}", status),
             Err(e) => eprintln!("[Internet] Files sync error: {}", e),
         }
 
@@ -456,11 +480,7 @@ fn sync_files_to_relay(state: &ShareState) {
             match std::fs::read(&f.path) {
                 Ok(data) => {
                     eprintln!("[Internet] Uploading file '{}' ({} bytes) to relay", f.name, data.len());
-                    match ureq::post(&upload_url)
-                        .set("Content-Type", "application/octet-stream")
-                        .set("X-Publisher-Token", &publisher_token)
-                        .timeout(std::time::Duration::from_secs(30))
-                        .send_bytes(&data) {
+                    match blocking_post_bytes(&upload_url, &data, &publisher_token, 30) {
                         Ok(_) => eprintln!("[Internet] File '{}' uploaded OK", f.name),
                         Err(e) => eprintln!("[Internet] File '{}' upload error: {}", f.name, e),
                     }
@@ -615,30 +635,20 @@ pub fn start_internet_sharing(
     eprintln!("[Internet] Publisher token: {} (len={})", publisher_token, publisher_token.len());
     eprintln!("[Internet] Relay secret: {} (len={})", relay_secret, relay_secret.len());
 
-    // Use ureq for POST - simple HTTP/1.1 client that works with LiteSpeed
     let body_str = serde_json::to_string(&start_body).unwrap_or_default();
     let mut resp = None;
     for attempt in 1..=3 {
-        let result = ureq::post(&start_url)
-            .set("Content-Type", "application/json")
-            .set("X-Publisher-Token", &publisher_token)
-            .timeout(std::time::Duration::from_secs(15))
-            .send_string(&body_str);
+        let result = blocking_post_json(&start_url, &body_str, &publisher_token, 15);
 
         match result {
-            Ok(resp_obj) => {
-                let body = resp_obj.into_string().unwrap_or_default();
-                resp = Some((body, 200));
-                break;
-            }
-            Err(ureq::Error::Status(code, resp_obj)) => {
-                let body = resp_obj.into_string().unwrap_or_default();
-                if code != 503 {
-                    resp = Some((body, code));
-                    break;
+            Ok((body, status)) => {
+                if status == 503 {
+                    eprintln!("[Internet] Got 503 on attempt {}, retrying in 2s...", attempt);
+                    std::thread::sleep(std::time::Duration::from_secs(2));
+                    continue;
                 }
-                eprintln!("[Internet] Got 503 on attempt {}, retrying in 2s...", attempt);
-                std::thread::sleep(std::time::Duration::from_secs(2));
+                resp = Some((body, status));
+                break;
             }
             Err(e) => {
                 eprintln!("[Internet] Transport error on attempt {}: {}", attempt, e);
@@ -683,12 +693,7 @@ pub fn start_internet_sharing(
                         "{}/api/publish/{}/frame",
                         relay_url_clone, session_id_clone
                     );
-                    // Use ureq for POST - works with LiteSpeed
-                    let _ = ureq::post(&frame_url)
-                        .set("Content-Type", "application/octet-stream")
-                        .set("X-Publisher-Token", &token_clone)
-                        .timeout(std::time::Duration::from_secs(5))
-                        .send_bytes(&frame_data);
+                    let _ = blocking_post_bytes(&frame_url, &frame_data, &token_clone, 5);
                 }
                 Err(e) => {
                     eprintln!("Capture error: {}", e);
@@ -707,10 +712,7 @@ pub fn start_internet_sharing(
             "{}/api/publish/{}/stop",
             relay_url_clone, session_id_clone
         );
-        let _ = ureq::post(&stop_url)
-            .set("X-Publisher-Token", &token_clone)
-            .timeout(std::time::Duration::from_secs(5))
-            .send_string("");
+        let _ = blocking_post_json(&stop_url, "", &token_clone, 5);
 
         let _ = app_clone.emit("sharing_stopped", ());
     });
@@ -817,10 +819,10 @@ pub fn update_internet_profile(
     });
     let body_str = body.to_string();
     tauri::async_runtime::spawn(async move {
-        let _ = ureq::post(&info_url)
-            .set("Content-Type", "application/json")
-            .timeout(std::time::Duration::from_secs(5))
-            .send_string(&body_str);
+        let _ = async_client(5).post(&info_url)
+            .header("Content-Type", "application/json")
+            .body(body_str)
+            .send().await;
     });
     Ok(())
 }
@@ -864,14 +866,14 @@ pub fn send_chat(state: State<ShareState>, text: String, subtype: Option<String>
             "text": text,
             "subtype": subtype_str
         });
-        // Spawn async task to send chat to relay via ureq
+        // Spawn async task to send chat to relay
         let chat_url_clone = chat_url.clone();
         let body_str = body.to_string();
         tauri::async_runtime::spawn(async move {
-            let _ = ureq::post(&chat_url_clone)
-                .set("Content-Type", "application/json")
-                .timeout(std::time::Duration::from_secs(5))
-                .send_string(&body_str);
+            let _ = async_client(5).post(&chat_url_clone)
+                .header("Content-Type", "application/json")
+                .body(body_str)
+                .send().await;
         });
         return Ok(());
     }

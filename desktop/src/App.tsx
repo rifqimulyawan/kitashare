@@ -350,6 +350,15 @@ export default function App() {
       {/* Main Content */}
       <main className="flex flex-1 items-start justify-center p-4 sm:p-6 lg:p-8">
         <div className="w-full max-w-2xl space-y-6">
+          {/* Loading Overlay */}
+          {loading && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+              <div className="flex flex-col items-center gap-4 rounded-2xl border border-border bg-card p-8 shadow-2xl">
+                <Spinner className="h-10 w-10 text-primary" />
+                <p className="text-lg font-semibold text-foreground">{t("common.startingShare")}</p>
+              </div>
+            </div>
+          )}
           {/* Status Card */}
           <Card className="overflow-hidden">
             <CardHeader>
