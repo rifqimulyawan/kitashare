@@ -137,6 +137,18 @@ export async function updateInternetProfile(
   });
 }
 
+export async function updateHostProfile(
+  hostName?: string,
+  hostAvatar?: string,
+  hostBio?: string,
+): Promise<void> {
+  return invoke("update_host_profile", {
+    hostName: hostName ?? null,
+    hostAvatar: hostAvatar ?? null,
+    hostBio: hostBio ?? null,
+  });
+}
+
 export async function sendChat(text: string, subtype?: string): Promise<void> {
   return invoke("send_chat", { text, subtype: subtype ?? null });
 }

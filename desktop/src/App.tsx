@@ -49,6 +49,7 @@ import {
   openFileDialog,
   startInternetSharing,
   updateInternetProfile,
+  updateHostProfile,
   sendChat,
   type SessionInfo,
   type DisplayInfo,
@@ -128,14 +129,22 @@ export default function App() {
     }
   }, [selectedDisplay, quality, fps, port, setSharing, setError, profile, shareMode, relayUrl]);
 
-  // Push profile updates to relay server when internet sharing
+  // Push profile updates when sharing (LAN or internet)
   useEffect(() => {
-    if (!isSharing || !sessionInfo?.internetUrl) return;
-    updateInternetProfile(
-      profile.name || undefined,
-      profile.avatar || undefined,
-      profile.bio || undefined,
-    ).catch(() => {});
+    if (!isSharing) return;
+    if (sessionInfo?.internetUrl) {
+      updateInternetProfile(
+        profile.name || undefined,
+        profile.avatar || undefined,
+        profile.bio || undefined,
+      ).catch(() => {});
+    } else {
+      updateHostProfile(
+        profile.name || undefined,
+        profile.avatar || undefined,
+        profile.bio || undefined,
+      ).catch(() => {});
+    }
   }, [isSharing, sessionInfo?.internetUrl, profile.name, profile.avatar, profile.bio]);
 
   const handleStop = useCallback(async () => {

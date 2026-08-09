@@ -6,6 +6,7 @@
 <meta name="theme-color" content="#1e40af">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231e40af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='2' y='3' width='20' height='14' rx='2'/%3E%3Cline x1='8' y1='21' x2='16' y2='21'/%3E%3Cline x1='12' y1='17' x2='12' y2='21'/%3E%3C/svg%3E">
 <title>KitaShare Viewer</title>
 <style>
 :root {
@@ -180,7 +181,7 @@ input { font-family: inherit; }
 .spinner {
   width: 48px; height: 48px; border: 4px solid rgba(255,255,255,0.2);
   border-top-color: var(--primary); border-radius: 50%;
-  animation: spin 0.8s linear infinite;
+  animation: spin 1.8s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -201,18 +202,24 @@ input { font-family: inherit; }
 }
 .chat-panel.hidden { transform: translateX(100%); position: absolute; right: 0; top: 0; bottom: 0; }
 .chat-header {
-  padding: 12px 16px; border-bottom: 1px solid var(--border);
+  padding: 10px 12px; border-bottom: 1px solid var(--border);
   display: flex; align-items: center; justify-content: space-between;
-  font-weight: 600; font-size: 15px;
+  font-weight: 600; font-size: 15px; gap: 8px;
   transition: border-color 0.3s var(--ease);
-  flex-wrap: wrap; gap: 8px;
 }
-.chat-header #chat-title { flex: 1; }
+.chat-header-left { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; }
+.chat-header #chat-title { flex-shrink: 0; }
+.chat-header-actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+.chat-header-actions .icon-btn { width: 30px; height: 30px; }
+.chat-header-actions .icon-btn svg { width: 16px; height: 16px; }
 .chat-header:has(.host-profile:not([style*="display:none"])) {
   flex-direction: column; align-items: stretch;
 }
+.chat-header:has(.host-profile:not([style*="display:none"])) .chat-header-left {
+  flex: none;
+}
 .chat-header:has(.host-profile:not([style*="display:none"])) #chat-title {
-  flex: none; padding-top: 4px;
+  padding-top: 4px;
 }
 .chat-messages {
   flex: 1; overflow-y: auto; padding: 12px 16px;
@@ -439,7 +446,7 @@ input { font-family: inherit; }
 
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  *, *::before, *::after { animation-duration: 0.01ms; transition-duration: 0.01ms; }
 }
 
 /* Large text */
@@ -814,20 +821,24 @@ body.immersive .immersive-exit { display: flex; }
 
   <div id="chat-panel" class="chat-panel hidden" role="complementary" aria-label="Chat panel">
     <div class="chat-header">
-      <div id="host-profile" class="host-profile" style="display:none">
-        <div id="host-avatar-container"></div>
-        <div class="host-profile-info">
-          <div class="host-profile-name" id="host-name"></div>
-          <div class="host-profile-bio" id="host-bio"></div>
+      <div class="chat-header-left">
+        <div id="host-profile" class="host-profile" style="display:none">
+          <div id="host-avatar-container"></div>
+          <div class="host-profile-info">
+            <div class="host-profile-name" id="host-name"></div>
+            <div class="host-profile-bio" id="host-bio"></div>
+          </div>
         </div>
+        <span data-i18n="chat" id="chat-title">Chat</span>
       </div>
-      <span data-i18n="chat" id="chat-title">Chat</span>
-      <button class="icon-btn" id="chat-export" aria-label="Export chat" title="Export chat" style="width:32px;height:32px;display:none">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-      </button>
-      <button class="icon-btn" id="chat-close" aria-label="Close chat" style="width:32px;height:32px">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
+      <div class="chat-header-actions">
+        <button class="icon-btn" id="chat-export" aria-label="Export chat" title="Export chat" style="display:none">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </button>
+        <button class="icon-btn" id="chat-close" aria-label="Close chat">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
     </div>
     <div id="chat-messages" class="chat-messages" role="log" aria-live="polite" aria-label="Chat messages">
       <div class="chat-empty" id="chat-empty">No messages yet. Start the conversation!</div>
@@ -1240,11 +1251,15 @@ body.immersive .immersive-exit { display: flex; }
     }
   }
 
-  // Poll for file availability every 5 seconds
+  // Poll for file availability and host profile every 5 seconds
   setInterval(function() {
     if (!sessionId) return;
     fetch(baseUrl + '/api/info/' + sessionId).then(function(r) { return r.json(); }).then(function(data) {
       updateFilesButton(data.files || 0);
+      if (data.host && data.host.name) {
+        hostProfile = data.host;
+        renderHostProfile(data.host);
+      }
     }).catch(function() {});
   }, 5000);
 

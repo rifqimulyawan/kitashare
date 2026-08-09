@@ -42,9 +42,9 @@ pub struct ServerState {
     pub width: usize,
     pub height: usize,
     pub fps: u32,
-    pub host_name: String,
-    pub host_avatar: String,
-    pub host_bio: String,
+    pub host_name: Mutex<String>,
+    pub host_avatar: Mutex<String>,
+    pub host_bio: Mutex<String>,
     pub shared_files: Arc<Mutex<Vec<SharedFile>>>,
 }
 
@@ -119,9 +119,9 @@ async fn info_handler(State(state): State<Arc<ServerState>>) -> axum::Json<serde
         "fps": state.fps,
         "clients": state.client_count.load(Ordering::Relaxed),
         "host": {
-            "name": state.host_name,
-            "avatar": state.host_avatar,
-            "bio": state.host_bio,
+            "name": *state.host_name.lock(),
+            "avatar": *state.host_avatar.lock(),
+            "bio": *state.host_bio.lock(),
         },
         "files": state.shared_files.lock().len()
     }))

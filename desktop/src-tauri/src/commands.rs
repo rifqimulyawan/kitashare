@@ -172,9 +172,9 @@ pub fn start_sharing(
         width,
         height,
         fps: target_fps,
-        host_name: host_name.unwrap_or_default(),
-        host_avatar: host_avatar.unwrap_or_default(),
-        host_bio: host_bio.unwrap_or_default(),
+        host_name: Mutex::new(host_name.unwrap_or_default()),
+        host_avatar: Mutex::new(host_avatar.unwrap_or_default()),
+        host_bio: Mutex::new(host_bio.unwrap_or_default()),
         shared_files,
     });
 
@@ -828,6 +828,29 @@ pub fn update_internet_profile(
 }
 
 #[tauri::command]
+pub fn update_host_profile(
+    state: State<ShareState>,
+    host_name: Option<String>,
+    host_avatar: Option<String>,
+    host_bio: Option<String>,
+) -> Result<(), String> {
+    let server_state = state.server_state.lock();
+    if let Some(ss) = server_state.as_ref() {
+        if let Some(name) = host_name {
+            *ss.host_name.lock() = name;
+        }
+        if let Some(avatar) = host_avatar {
+            *ss.host_avatar.lock() = avatar;
+        }
+        if let Some(bio) = host_bio {
+            *ss.host_bio.lock() = bio;
+        }
+        return Ok(());
+    }
+    Err("Not sharing".to_string())
+}
+
+#[tauri::command]
 pub fn send_chat(state: State<ShareState>, text: String, subtype: Option<String>) -> Result<(), String> {
     let subtype_str = subtype.unwrap_or_default();
     let timestamp = std::time::SystemTime::now()
@@ -838,7 +861,8 @@ pub fn send_chat(state: State<ShareState>, text: String, subtype: Option<String>
     // Try LAN sharing first
     let server_state = state.server_state.lock();
     if let Some(ss) = server_state.as_ref() {
-        let host_name = if ss.host_name.is_empty() { "Host".to_string() } else { ss.host_name.clone() };
+        let hn = ss.host_name.lock().clone();
+        let host_name = if hn.is_empty() { "Host".to_string() } else { hn };
         let chat_msg = serde_json::json!({
             "type": "chat",
             "user": host_name,
