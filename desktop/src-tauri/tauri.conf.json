@@ -43,6 +43,10 @@
     "windows": {
       "wix": {
         "language": "en-US"
+      },
+      "nsis": {
+        "installMode": "currentUser",
+        "displayLanguageSelector": false
       }
     },
     "macOS": {

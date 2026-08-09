@@ -98,6 +98,7 @@ export default function App() {
     setLoading(true);
     setError(null);
     try {
+      const minDelay = new Promise((r) => setTimeout(r, 3000));
       let info: SessionInfo;
       if (shareMode === "internet") {
         info = await startInternetSharing(
@@ -115,8 +116,10 @@ export default function App() {
           profile.bio || undefined,
         );
       }
+      await minDelay;
       setSharing(info);
     } catch (e: any) {
+      await new Promise((r) => setTimeout(r, 3000));
       setError(e?.message || String(e));
     }
   }, [selectedDisplay, quality, fps, port, setSharing, setError, setLoading, profile, shareMode, relayUrl]);
