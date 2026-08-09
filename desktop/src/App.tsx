@@ -182,6 +182,7 @@ export default function App() {
     let unlisten: (() => void) | undefined;
     onRaiseHand((payload) => {
       setRaiseHandNotifications([{ user: payload.user, timestamp: payload.timestamp }]);
+      setChatMessages((prev) => [...prev, { user: payload.user, text: "✋ " + t("host.raisedHandMsg", { user: payload.user }), timestamp: payload.timestamp, subtype: "raise_hand", isSelf: false }]);
     }).then((fn) => { unlisten = fn; });
     return () => { if (unlisten) unlisten(); };
   }, [isSharing]);
@@ -205,6 +206,7 @@ export default function App() {
       if (msg.subtype === "meme") { type = "meme"; text = "[Meme image]"; }
       else if (msg.subtype === "quote") { type = "quote"; text = msg.text.split("|||")[0] + " — " + (msg.text.split("|||")[1] || ""); }
       else if (msg.subtype === "rename") { type = "rename"; text = msg.text.split("|||")[0] + " -> " + msg.text.split("|||")[1]; }
+      else if (msg.subtype === "raise_hand") { type = "raise_hand"; }
       const user = msg.isSelf ? t("host.you") : msg.user;
       const escaped = text.replace(/"/g, '""');
       rows.push([time, user.replace(/"/g, '""'), escaped, type]);
@@ -749,13 +751,16 @@ export default function App() {
                 </div>
               ) : (
                 chatMessages.map((msg, i) => (
-                  <div key={i} className={`flex flex-col ${msg.subtype === "rename" ? "items-center" : msg.isSelf ? "items-end" : "items-start"}`}>
+                  <div key={i} className={`flex flex-col ${msg.subtype === "rename" || msg.subtype === "raise_hand" ? "items-center" : msg.isSelf ? "items-end" : "items-start"}`}>
                     <div className={`max-w-[85%] rounded-xl px-3 py-2 text-sm ${
                       msg.subtype === "rename" ? "w-full bg-muted/50 border border-border text-center text-xs italic text-muted-foreground" :
+                      msg.subtype === "raise_hand" ? "w-full bg-warning/15 border border-warning text-center text-xs font-semibold text-warning" :
                       msg.isSelf ? "bg-primary text-primary-foreground" : "bg-muted"
                     }`}>
                       {msg.subtype === "rename" ? (
                         <div>{t("host.renameMsg", { old: msg.text.split("|||")[0], new: msg.text.split("|||")[1] })}</div>
+                      ) : msg.subtype === "raise_hand" ? (
+                        <div>{msg.text}</div>
                       ) : (
                         <>
                       <div className="mb-0.5 text-xs font-semibold opacity-70">{msg.isSelf ? t("host.you") : msg.user}</div>
