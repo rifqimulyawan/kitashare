@@ -956,6 +956,7 @@ body.immersive .immersive-exit { display: flex; }
   let visualNotify = true;
   let unreadCount = 0;
   let isChatOpen = false;
+  var isTouchDevice = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
   let canvasScale = 1;
   let canvasPanX = 0;
   let canvasPanY = 0;
@@ -1107,7 +1108,7 @@ body.immersive .immersive-exit { display: flex; }
     btn.textContent = t('confirm');
     input.value = viewerNickname || generateFallbackNickname();
     overlay.classList.add('visible');
-    setTimeout(function() { input.focus(); input.select(); }, 300);
+    if (!isTouchDevice) setTimeout(function() { input.focus(); input.select(); }, 300);
 
     function submitNickname() {
       var name = input.value.trim();
@@ -1157,7 +1158,7 @@ body.immersive .immersive-exit { display: flex; }
     var btn = document.getElementById('nickname-submit');
     input.value = generateFallbackNickname();
     overlay.classList.add('visible');
-    setTimeout(function() { input.focus(); input.select(); }, 300);
+    if (!isTouchDevice) setTimeout(function() { input.focus(); input.select(); }, 300);
 
     function submit() {
       var name = input.value.trim();
@@ -1476,7 +1477,7 @@ body.immersive .immersive-exit { display: flex; }
     isChatOpen = true;
     unreadCount = 0;
     updateUnreadBadge();
-    setTimeout(function() { chatInput.focus(); }, 100);
+    if (!isTouchDevice) setTimeout(function() { chatInput.focus(); }, 100);
   }
 
   function closeChat() {
