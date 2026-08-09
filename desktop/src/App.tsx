@@ -360,17 +360,32 @@ export default function App() {
           {/* Loading Overlay */}
           {isStarting && (
             <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-md">
-              <div className="flex flex-col items-center gap-6 rounded-3xl border border-border bg-card p-10 shadow-2xl animate-in fade-in zoom-in-95 duration-300">
+              <div
+                className="flex flex-col items-center gap-6 rounded-3xl border border-border bg-card p-10 shadow-2xl"
+                style={{ animation: "overlayFadeIn 0.5s ease-out, overlayZoomIn 0.5s ease-out" }}
+              >
                 <div className="relative h-16 w-16">
                   <div className="absolute inset-0 rounded-full border-4 border-muted" />
-                  <div className="absolute inset-0 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+                  <div
+                    className="absolute inset-0 rounded-full border-4 border-primary border-t-transparent"
+                    style={{ animation: "overlaySpin 1.8s linear infinite" }}
+                  />
                 </div>
-                <div className="flex flex-col items-center gap-2">
+                <div className="flex flex-col items-center gap-3">
                   <p className="text-lg font-bold text-foreground">{t("common.startingShare")}</p>
-                  <div className="flex gap-1.5">
-                    <span className="h-2 w-2 rounded-full bg-primary animate-bounce [animation-delay:0ms]" />
-                    <span className="h-2 w-2 rounded-full bg-primary animate-bounce [animation-delay:150ms]" />
-                    <span className="h-2 w-2 rounded-full bg-primary animate-bounce [animation-delay:300ms]" />
+                  <div className="flex gap-2">
+                    <span
+                      className="h-2.5 w-2.5 rounded-full bg-primary"
+                      style={{ animation: "overlayBounce 1.4s ease-in-out infinite", animationDelay: "0ms" }}
+                    />
+                    <span
+                      className="h-2.5 w-2.5 rounded-full bg-primary"
+                      style={{ animation: "overlayBounce 1.4s ease-in-out infinite", animationDelay: "200ms" }}
+                    />
+                    <span
+                      className="h-2.5 w-2.5 rounded-full bg-primary"
+                      style={{ animation: "overlayBounce 1.4s ease-in-out infinite", animationDelay: "400ms" }}
+                    />
                   </div>
                 </div>
               </div>
