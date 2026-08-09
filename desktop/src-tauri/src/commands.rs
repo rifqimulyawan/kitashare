@@ -491,6 +491,54 @@ fn sync_files_to_relay(state: &ShareState) {
     }
 }
 
+fn send_file_shared_notification(state: &ShareState, file_names: &str) {
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+
+    // LAN sharing
+    let server_state = state.server_state.lock();
+    if let Some(ss) = server_state.as_ref() {
+        let hn = ss.host_name.lock().clone();
+        let host_name = if hn.is_empty() { "Host".to_string() } else { hn };
+        let chat_msg = serde_json::json!({
+            "type": "chat",
+            "user": host_name,
+            "text": file_names,
+            "timestamp": timestamp,
+            "subtype": "file_shared",
+            "clientId": "__host__"
+        });
+        if let Ok(broadcast_str) = serde_json::to_string(&chat_msg) {
+            let _ = ss.chat_tx.send(broadcast_str);
+        }
+        return;
+    }
+    drop(server_state);
+
+    // Internet sharing — send to relay server
+    let relay_url = state.internet_relay_url.lock().clone();
+    let session_id = state.internet_session_id.lock().clone();
+    if let (Some(relay_url), Some(session_id)) = (relay_url, session_id) {
+        let chat_url = format!("{}/api/chat/{}", relay_url, session_id);
+        let host_name = state.internet_host_name.lock().clone();
+        let host_name = if host_name.is_empty() { "Host".to_string() } else { host_name };
+        let body = serde_json::json!({
+            "user": host_name,
+            "text": file_names,
+            "subtype": "file_shared"
+        });
+        let body_str = body.to_string();
+        tauri::async_runtime::spawn(async move {
+            let _ = async_client(5).post(&chat_url)
+                .header("Content-Type", "application/json")
+                .body(body_str)
+                .send().await;
+        });
+    }
+}
+
 #[tauri::command]
 pub fn share_files(state: State<ShareState>, files: Vec<String>) -> Result<Vec<SharedFileInfo>, String> {
     if !state.is_sharing.load(Ordering::Relaxed) {
@@ -523,6 +571,12 @@ pub fn share_files(state: State<ShareState>, files: Vec<String>) -> Result<Vec<S
     }
     drop(shared);
     sync_files_to_relay(&state);
+
+    // Send file_shared chat notification
+    let file_names: Vec<String> = result.iter().map(|f| f.name.clone()).collect();
+    let notif_text = file_names.join(", ");
+    send_file_shared_notification(&state, &notif_text);
+
     Ok(result)
 }
 

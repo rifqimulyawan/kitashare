@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Monitor,
@@ -111,9 +111,7 @@ export default function App() {
         } else if (e.type === "drop") {
           setIsDragging(false);
           if (showFiles && e.paths.length > 0) {
-            shareFiles(e.paths)
-              .then((added) => setSharedFiles((prev) => [...prev, ...added]))
-              .catch((err) => console.error("Failed to add dropped files:", err));
+            handleShareFilesRef.current(e.paths);
           }
         } else if (e.type === "leave") {
           setIsDragging(false);
@@ -155,6 +153,29 @@ export default function App() {
       setIsStarting(false);
     }
   }, [selectedDisplay, quality, fps, port, setSharing, setError, profile, shareMode, relayUrl]);
+
+  const handleShareFiles = useCallback(async (paths: string[]) => {
+    if (paths.length === 0) return;
+    try {
+      const added = await shareFiles(paths);
+      setSharedFiles((prev) => [...prev, ...added]);
+      if (added.length > 0) {
+        const names = added.map((f) => f.name).join(", ");
+        setChatMessages((prev) => [...prev, {
+          user: t("host.you"),
+          text: names,
+          timestamp: Date.now() / 1000,
+          subtype: "file_shared",
+          isSelf: true,
+        }]);
+      }
+    } catch (err) {
+      console.error("Failed to add files:", err);
+    }
+  }, [t]);
+
+  const handleShareFilesRef = useRef(handleShareFiles);
+  handleShareFilesRef.current = handleShareFiles;
 
   // Push profile updates when sharing (LAN or internet)
   useEffect(() => {
@@ -234,6 +255,7 @@ export default function App() {
       else if (msg.subtype === "quote") { type = "quote"; text = msg.text.split("|||")[0] + " — " + (msg.text.split("|||")[1] || ""); }
       else if (msg.subtype === "rename") { type = "rename"; text = msg.text.split("|||")[0] + " -> " + msg.text.split("|||")[1]; }
       else if (msg.subtype === "raise_hand") { type = "raise_hand"; }
+      else if (msg.subtype === "file_shared") { type = "file_shared"; }
       const user = msg.isSelf ? t("host.you") : msg.user;
       const escaped = text.replace(/"/g, '""');
       rows.push([time, user.replace(/"/g, '""'), escaped, type]);
@@ -778,16 +800,22 @@ export default function App() {
                 </div>
               ) : (
                 chatMessages.map((msg, i) => (
-                  <div key={i} className={`flex flex-col ${msg.subtype === "rename" || msg.subtype === "raise_hand" ? "items-center" : msg.isSelf ? "items-end" : "items-start"}`}>
+                  <div key={i} className={`flex flex-col ${msg.subtype === "rename" || msg.subtype === "raise_hand" || msg.subtype === "file_shared" ? "items-center" : msg.isSelf ? "items-end" : "items-start"}`}>
                     <div className={`max-w-[85%] rounded-xl px-3 py-2 text-sm ${
                       msg.subtype === "rename" ? "w-full bg-muted/50 border border-border text-center text-xs italic text-muted-foreground" :
                       msg.subtype === "raise_hand" ? "w-full bg-warning/15 border border-warning text-center text-xs font-semibold text-warning" :
+                      msg.subtype === "file_shared" ? "w-full bg-muted/50 border border-border text-left text-xs text-muted-foreground" :
                       msg.isSelf ? "bg-primary text-primary-foreground" : "bg-muted"
                     }`}>
                       {msg.subtype === "rename" ? (
                         <div>{t("host.renameMsg", { old: msg.text.split("|||")[0], new: msg.text.split("|||")[1] })}</div>
                       ) : msg.subtype === "raise_hand" ? (
                         <div>{msg.text}</div>
+                      ) : msg.subtype === "file_shared" ? (
+                        <div className="flex items-center gap-1.5">
+                          <FolderOpen className="h-4 w-4 shrink-0 text-primary" />
+                          <span>{t("host.fileSharedMsg", { user: msg.user, files: msg.text })}</span>
+                        </div>
                       ) : (
                         <>
                       <div className="mb-0.5 text-xs font-semibold opacity-70">{msg.isSelf ? t("host.you") : msg.user}</div>
@@ -944,15 +972,8 @@ export default function App() {
                   variant="ghost"
                   size="icon"
                   onClick={async () => {
-                    try {
-                      const paths = await openFileDialog();
-                      if (paths.length > 0) {
-                        const added = await shareFiles(paths);
-                        setSharedFiles((prev) => [...prev, ...added]);
-                      }
-                    } catch (err) {
-                      console.error("Failed to add files:", err);
-                    }
+                    const paths = await openFileDialog();
+                    await handleShareFiles(paths);
                   }}
                   aria-label={t("host.addFiles")}
                   title={t("host.addFiles")}
@@ -984,15 +1005,8 @@ export default function App() {
               {sharedFiles.length === 0 ? (
                 <button
                   onClick={async () => {
-                    try {
-                      const paths = await openFileDialog();
-                      if (paths.length > 0) {
-                        const added = await shareFiles(paths);
-                        setSharedFiles((prev) => [...prev, ...added]);
-                      }
-                    } catch (err) {
-                      console.error("Failed to add files:", err);
-                    }
+                    const paths = await openFileDialog();
+                    await handleShareFiles(paths);
                   }}
                   className="flex h-full w-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-border p-8 text-center transition-colors hover:border-primary/50 hover:bg-primary/5"
                 >
