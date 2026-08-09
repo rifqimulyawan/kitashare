@@ -19,6 +19,10 @@ pub struct ChatMessage {
     pub user: String,
     pub text: String,
     pub timestamp: u64,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub subtype: String,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    pub client_id: String,
 }
 
 #[derive(Clone, serde::Serialize)]
@@ -72,7 +76,7 @@ pub async fn start_server(port: u16, state: Arc<ServerState>) -> Result<tokio::t
         .route("/ws", get(ws_handler))
         .route("/api/info", get(info_handler))
         .route("/api/files", get(files_handler))
-        .route("/api/files/{id}", get(file_download_handler))
+        .route("/api/files/:id", get(file_download_handler))
         .with_state(state);
 
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", port))
@@ -291,6 +295,8 @@ async fn handle_ws_connection(socket: WebSocket, state: Arc<ServerState>) {
                                     .duration_since(std::time::UNIX_EPOCH)
                                     .unwrap_or_default()
                                     .as_secs(),
+                                subtype: msg_subtype.clone(),
+                                client_id: client_id.clone(),
                             };
 
                             {
@@ -356,5 +362,12 @@ async fn handle_ws_connection(socket: WebSocket, state: Arc<ServerState>) {
         }
     }
 
-    client_count.fetch_sub(1, Ordering::Relaxed);
+    // Decrement client count, clamping at 0 to prevent underflow
+    loop {
+        let current = client_count.load(Ordering::Relaxed);
+        if current == 0 { break; }
+        if client_count.compare_exchange(current, current - 1, Ordering::Relaxed, Ordering::Relaxed).is_ok() {
+            break;
+        }
+    }
 }

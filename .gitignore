@@ -32,3 +32,18 @@ desktop/src-tauri/target/
 desktop/src-tauri/resources/assets/
 desktop/src-tauri/resources/index.html
 desktop/src-tauri/gen/
+
+# AI tool directories (never commit)
+.windsurf/
+.devin/
+.cursor/
+
+# Relay server — exclude only files with credentials
+relay-server/deploy_relay.py
+relay-server/secret.json
+relay-server/.deploy_manifest_kitashare.json
+
+# Secrets
+*.secret
+secret.json
+relay-secret.txt

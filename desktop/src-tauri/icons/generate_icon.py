@@ -1,146 +1,66 @@
-"""Generate KitaShare app icon - a monitor with share arrows on gradient background."""
+"""Generate KitaShare app icon - matches header logo: blue rounded square with white monitor icon."""
 from PIL import Image, ImageDraw
 import math
 
 SIZE = 1024
+# Primary blue color (blue-500 / #3b82f6)
+BG_COLOR = (59, 130, 246, 255)
+# White for the monitor icon
+ICON_COLOR = (255, 255, 255, 255)
 
 def create_icon(size):
     img = Image.new('RGBA', (size, size), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
 
-    # Rounded rectangle background with gradient
+    # Rounded square background (blue)
     radius = size // 6
-    # Draw gradient background
-    for y in range(size):
-        ratio = y / size
-        r = int(59 + (139 - 59) * ratio)   # 3B -> 8B
-        g = int(130 + (92 - 130) * ratio)   # 82 -> 5C
-        b = int(246 + (246 - 246) * ratio)  # F6 -> F6
-        for x in range(size):
-            # Check if inside rounded rect
-            in_rect = True
-            # Check corners
-            corners = [(radius, radius), (size - radius, radius), (radius, size - radius), (size - radius, size - radius)]
-            if x < radius and y < radius:
-                if math.hypot(x - radius, y - radius) > radius:
-                    in_rect = False
-            elif x > size - radius and y < radius:
-                if math.hypot(x - (size - radius), y - radius) > radius:
-                    in_rect = False
-            elif x < radius and y > size - radius:
-                if math.hypot(x - radius, y - (size - radius)) > radius:
-                    in_rect = False
-            elif x > size - radius and y > size - radius:
-                if math.hypot(x - (size - radius), y - (size - radius)) > radius:
-                    in_rect = False
-            if in_rect:
-                img.putpixel((x, y), (r, g, b, 255))
+    draw.rounded_rectangle(
+        [0, 0, size - 1, size - 1],
+        radius=radius,
+        fill=BG_COLOR
+    )
 
-    draw = ImageDraw.Draw(img)
-
-    cx, cy = size // 2, size // 2
     scale = size / 1024
+    cx, cy = size // 2, size // 2
 
-    # Monitor screen (white rounded rect)
-    mw = int(520 * scale)
-    mh = int(360 * scale)
+    # Monitor screen (white rounded rect) - matches lucide Monitor icon
+    # Monitor: rect x=2 y=3 w=20 h=14 rx=2, line 8,21 to 16,21, line 12,17 to 12,21
+    # Scale to icon size with padding
+    mw = int(560 * scale)
+    mh = int(390 * scale)
     mx = cx - mw // 2
-    my = cy - mh // 2 - int(40 * scale)
-    mr = int(20 * scale)
+    my = cy - mh // 2 - int(30 * scale)
+    mr = int(30 * scale)
 
-    # Draw monitor screen with subtle shadow
-    # Shadow
-    for offset in range(int(8 * scale), 0, -1):
-        alpha = int(30 * (offset / (8 * scale)))
-        draw.rounded_rectangle(
-            [mx - offset, my + offset, mx + mw + offset, my + mh + offset],
-            radius=mr + offset,
-            fill=(0, 0, 0, alpha)
-        )
-
-    # Screen background (dark)
+    # Monitor screen outline (white)
+    line_w = max(int(24 * scale), 2)
     draw.rounded_rectangle(
         [mx, my, mx + mw, my + mh],
         radius=mr,
-        fill=(30, 41, 59, 255)  # slate-800
+        outline=ICON_COLOR,
+        width=line_w
     )
 
-    # Screen inner highlight
-    draw.rounded_rectangle(
-        [mx + int(8 * scale), my + int(8 * scale), mx + mw - int(8 * scale), my + mh - int(8 * scale)],
-        radius=mr - int(4 * scale),
-        fill=(15, 23, 42, 255)  # slate-900
-    )
-
-    # Monitor stand
-    stand_w = int(120 * scale)
-    stand_h = int(30 * scale)
+    # Monitor stand (horizontal line at bottom)
+    stand_w = int(200 * scale)
+    stand_y = my + mh + int(20 * scale)
     stand_x = cx - stand_w // 2
-    stand_y = my + mh
     draw.rounded_rectangle(
-        [stand_x, stand_y, stand_x + stand_w, stand_y + stand_h],
-        radius=int(6 * scale),
-        fill=(30, 41, 59, 255)
+        [stand_x, stand_y - line_w // 2, stand_x + stand_w, stand_y + line_w // 2],
+        radius=line_w // 2,
+        fill=ICON_COLOR
     )
 
-    # Monitor base
-    base_w = int(200 * scale)
-    base_h = int(16 * scale)
-    base_x = cx - base_w // 2
-    base_y = stand_y + stand_h
+    # Monitor base connector (vertical line)
+    connector_h = int(50 * scale)
+    connector_x = cx
+    connector_top = my + mh
     draw.rounded_rectangle(
-        [base_x, base_y, base_x + base_w, base_y + base_h],
-        radius=int(8 * scale),
-        fill=(30, 41, 59, 255)
+        [connector_x - line_w // 2, connector_top,
+         connector_x + line_w // 2, connector_top + connector_h],
+        radius=line_w // 2,
+        fill=ICON_COLOR
     )
-
-    # Share arrows on screen (white/light blue)
-    arrow_color = (96, 165, 250, 255)  # blue-400
-    arrow_w = int(8 * scale)
-    arrow_len = int(120 * scale)
-    gap = int(50 * scale)
-
-    # Left arrow (pointing right) - top
-    ax1 = cx - gap // 2 - arrow_len
-    ay1 = my + int(100 * scale)
-    # Arrow shaft
-    draw.rounded_rectangle(
-        [ax1, ay1 - arrow_w // 2, ax1 + arrow_len, ay1 + arrow_w // 2],
-        radius=arrow_w // 2,
-        fill=arrow_color
-    )
-    # Arrow head
-    head_size = int(24 * scale)
-    draw.polygon([
-        (ax1 + arrow_len, ay1 - head_size),
-        (ax1 + arrow_len + head_size, ay1),
-        (ax1 + arrow_len, ay1 + head_size),
-    ], fill=arrow_color)
-
-    # Right arrow (pointing left) - bottom
-    ax2 = cx + gap // 2
-    ay2 = my + int(200 * scale)
-    # Arrow shaft
-    draw.rounded_rectangle(
-        [ax2, ay2 - arrow_w // 2, ax2 + arrow_len, ay2 + arrow_w // 2],
-        radius=arrow_w // 2,
-        fill=(255, 255, 255, 230)
-    )
-    # Arrow head
-    draw.polygon([
-        (ax2, ay2 - head_size),
-        (ax2 - head_size, ay2),
-        (ax2, ay2 + head_size),
-    ], fill=(255, 255, 255, 230))
-
-    # Small connection dots between arrows
-    dot_r = int(6 * scale)
-    for i in range(3):
-        dy = ay1 + (ay2 - ay1) * (i + 1) // 4
-        draw.ellipse(
-            [cx - dot_r, dy - dot_r, cx + dot_r, dy + dot_r],
-            fill=(96, 165, 250, 180)
-        )
 
     return img
 
@@ -173,8 +93,7 @@ ico_icon = create_icon(256)
 ico_icon.save(r"e:\Standalone Apps Work\rmshare-apps\desktop\src-tauri\icons\icon.ico",
               format='ICO', sizes=[(16,16), (32,32), (48,48), (64,64), (128,128), (256,256)])
 
-# Generate ICNS (macOS) - Pillow doesn't support ICNS directly on all platforms
-# but we can try
+# Generate ICNS (macOS)
 try:
     icns_icon = create_icon(512)
     icns_icon.save(r"e:\Standalone Apps Work\rmshare-apps\desktop\src-tauri\icons\icon.icns",

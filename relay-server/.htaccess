@@ -1,0 +1,41 @@
+# KitaShare Relay - .htaccess for Hostinger hPanel
+# Passenger handles all routing to app.js automatically
+
+# Security headers
+<IfModule mod_headers.c>
+  Header set X-Content-Type-Options "nosniff"
+  Header set X-Frame-Options "DENY"
+  Header set Referrer-Policy "no-referrer"
+  Header set X-XSS-Protection "1; mode=block"
+</IfModule>
+
+# Disable directory listing
+Options -Indexes
+
+# Block dotfiles
+<FilesMatch "^\.(htaccess|env|git)">
+  Require all denied
+</FilesMatch>
+
+# SSE support - disable buffering and compression for /stream/
+<IfModule mod_headers.c>
+  <LocationMatch "^/stream/">
+    Header unset X-Accel-Buffering
+    Header set Cache-Control "no-cache, no-transform"
+    Header set Connection "keep-alive"
+  </LocationMatch>
+</IfModule>
+
+# Disable gzip for SSE (causes buffering issues)
+<IfModule mod_deflate.c>
+  <LocationMatch "^/stream/">
+    SetEnvIfNoCase Request_URI ^/stream/ no-gzip dont-vary
+  </LocationMatch>
+</IfModule>
+
+# Passenger config - ensure Node.js app handles all routes
+<IfModule mod_passenger.c>
+  PassengerEnabled on
+  PassengerAppType node
+  PassengerStartupFile app.js
+</IfModule>

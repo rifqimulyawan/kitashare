@@ -21,8 +21,11 @@ import {
   Camera,
   FolderOpen,
   FileText,
+  FilePlus2,
   Trash2,
   Download,
+  Smile,
+  Quote,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Button } from "./components/ui/Button";
@@ -44,6 +47,9 @@ import {
   clearFiles,
   removeFile,
   openFileDialog,
+  startInternetSharing,
+  updateInternetProfile,
+  sendChat,
   type SessionInfo,
   type DisplayInfo,
   type SharedFileInfo,
@@ -74,6 +80,13 @@ export default function App() {
   const [profileBio, setProfileBio] = useState(profile.bio);
   const [showFiles, setShowFiles] = useState(false);
   const [sharedFiles, setSharedFiles] = useState<SharedFileInfo[]>([]);
+  const [showExportConfirm, setShowExportConfirm] = useState(false);
+  const [showPicker, setShowPicker] = useState<"meme" | "quote" | null>(null);
+  const [pickerItems, setPickerItems] = useState<{url?: string; text?: string; author?: string}[]>([]);
+  const [pickerLoading, setPickerLoading] = useState(false);
+  const [pickerSearch, setPickerSearch] = useState("");
+  const [shareMode, setShareMode] = useState<"lan" | "internet">("lan");
+  const [relayUrl, setRelayUrl] = useState(localStorage.getItem("kitashare-relay-url") || "https://kitashare.rmdigital.co.id");
 
   useEffect(() => {
     getAvailableDisplays()
@@ -85,17 +98,38 @@ export default function App() {
     setLoading(true);
     setError(null);
     try {
-      const info = await startSharing(
-        selectedDisplay, quality, fps, port,
-        profile.name || undefined,
-        profile.avatar || undefined,
-        profile.bio || undefined,
-      );
+      let info: SessionInfo;
+      if (shareMode === "internet") {
+        info = await startInternetSharing(
+          relayUrl,
+          selectedDisplay, quality, fps,
+          profile.name || undefined,
+          profile.avatar || undefined,
+          profile.bio || undefined,
+        );
+      } else {
+        info = await startSharing(
+          selectedDisplay, quality, fps, port,
+          profile.name || undefined,
+          profile.avatar || undefined,
+          profile.bio || undefined,
+        );
+      }
       setSharing(info);
     } catch (e: any) {
       setError(e?.message || String(e));
     }
-  }, [selectedDisplay, quality, fps, port, setSharing, setError, setLoading, profile]);
+  }, [selectedDisplay, quality, fps, port, setSharing, setError, setLoading, profile, shareMode, relayUrl]);
+
+  // Push profile updates to relay server when internet sharing
+  useEffect(() => {
+    if (!isSharing || !sessionInfo?.internetUrl) return;
+    updateInternetProfile(
+      profile.name || undefined,
+      profile.avatar || undefined,
+      profile.bio || undefined,
+    ).catch(() => {});
+  }, [isSharing, sessionInfo?.internetUrl, profile.name, profile.avatar, profile.bio]);
 
   const handleStop = useCallback(async () => {
     try {
@@ -108,7 +142,8 @@ export default function App() {
 
   const handleCopy = useCallback(() => {
     if (!sessionInfo) return;
-    navigator.clipboard.writeText(sessionInfo.url);
+    const url = sessionInfo.internetUrl || sessionInfo.url;
+    navigator.clipboard.writeText(url);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }, [sessionInfo]);
@@ -145,6 +180,29 @@ export default function App() {
     return () => { if (unlisten) unlisten(); };
   }, [isSharing]);
 
+  const exportChatCsv = useCallback(() => {
+    const rows = [["Timestamp", "User", "Message", "Type"]];
+    for (const msg of chatMessages) {
+      const time = new Date(msg.timestamp * 1000).toLocaleString();
+      let text = msg.text;
+      let type = "text";
+      if (msg.subtype === "meme") { type = "meme"; text = "[Meme image]"; }
+      else if (msg.subtype === "quote") { type = "quote"; text = msg.text.split("|||")[0] + " — " + (msg.text.split("|||")[1] || ""); }
+      else if (msg.subtype === "rename") { type = "rename"; text = msg.text.split("|||")[0] + " -> " + msg.text.split("|||")[1]; }
+      const user = msg.isSelf ? t("host.you") : msg.user;
+      const escaped = text.replace(/"/g, '""');
+      rows.push([time, user.replace(/"/g, '""'), escaped, type]);
+    }
+    const csv = rows.map((r) => r.map((c) => `"${c}"`).join(",")).join("\n");
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `kitashare-chat-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [chatMessages, t]);
+
   // Clear chat and files when sharing stops
   useEffect(() => {
     if (!isSharing) {
@@ -167,6 +225,60 @@ export default function App() {
     }
   }, [raiseHandNotifications]);
 
+  // Meme/Quote picker
+  const openPicker = useCallback(async (type: "meme" | "quote") => {
+    setShowPicker(type);
+    setPickerSearch("");
+    setPickerLoading(true);
+    setPickerItems([]);
+    try {
+      if (type === "meme") {
+        const res = await fetch("https://api.github.com/repos/itsgucci/meme/contents/img?ref=master");
+        const data = await res.json();
+        const memes = data.filter((item: any) => item.type === "file" && item.download_url)
+          .map((item: any) => ({ url: item.download_url }));
+        for (let i = memes.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [memes[i], memes[j]] = [memes[j], memes[i]];
+        }
+        setPickerItems(memes);
+      } else {
+        const res = await fetch("https://raw.githubusercontent.com/JamesFT/Database-Quotes-JSON/master/quotes.json");
+        const data = await res.json();
+        const quotes = data.map((q: any) => ({ text: q.quoteText, author: q.quoteAuthor || "Unknown" }));
+        for (let i = quotes.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [quotes[i], quotes[j]] = [quotes[j], quotes[i]];
+        }
+        setPickerItems(quotes);
+      }
+    } catch {
+      setPickerItems([]);
+    }
+    setPickerLoading(false);
+  }, []);
+
+  const sendMeme = useCallback(async (url: string) => {
+    setChatMessages((prev) => [...prev, { user: t("host.host"), text: url, timestamp: Date.now() / 1000, subtype: "meme", isSelf: true }]);
+    sendChat(url, "meme").catch(() => {});
+    setShowPicker(null);
+  }, [t]);
+
+  const sendQuote = useCallback(async (text: string, author: string) => {
+    const combined = text + "|||" + author;
+    setChatMessages((prev) => [...prev, { user: t("host.host"), text: combined, timestamp: Date.now() / 1000, subtype: "quote", isSelf: true }]);
+    sendChat(combined, "quote").catch(() => {});
+    setShowPicker(null);
+  }, [t]);
+
+  const handleSendChat = useCallback(() => {
+    if (!chatInput.trim()) return;
+    const text = chatInput.trim();
+    setChatMessages((prev) => [...prev, { user: t("host.host"), text, timestamp: Date.now() / 1000, subtype: "", isSelf: true }]);
+    sendChat(text).catch(() => {});
+    setChatInput("");
+  }, [chatInput, t]);
+
   return (
     <div className="flex min-h-screen flex-col bg-background">
       {/* Top Bar */}
@@ -183,8 +295,8 @@ export default function App() {
               variant="ghost"
               size="icon"
               onClick={() => setShowFiles(!showFiles)}
-              aria-label="Shared Files"
-              title="Shared Files"
+              aria-label={t("host.sharedFiles")}
+              title={t("host.sharedFiles")}
               className="relative"
             >
               <FolderOpen className="h-5 w-5" />
@@ -200,8 +312,8 @@ export default function App() {
               variant="ghost"
               size="icon"
               onClick={() => setShowChat(!showChat)}
-              aria-label="Chat"
-              title="Chat"
+              aria-label={t("host.chat")}
+              title={t("host.chat")}
               className="relative"
             >
               <MessageSquare className="h-5 w-5" />
@@ -348,6 +460,56 @@ export default function App() {
                 </div>
               )}
 
+              {/* Share Mode Toggle (when not sharing) */}
+              {!isSharing && (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => setShareMode("lan")}
+                      className={`flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-all ${
+                        shareMode === "lan"
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-muted-foreground hover:bg-accent"
+                      }`}
+                    >
+                      <Wifi className="h-4 w-4" />
+                      LAN
+                    </button>
+                    <button
+                      onClick={() => setShareMode("internet")}
+                      className={`flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-all ${
+                        shareMode === "internet"
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-muted-foreground hover:bg-accent"
+                      }`}
+                    >
+                      <Globe className="h-4 w-4" />
+                      Internet
+                    </button>
+                  </div>
+                  {shareMode === "internet" && (
+                    <div>
+                      <label className="mb-1.5 block text-xs font-semibold text-muted-foreground">
+                        Relay Server URL
+                      </label>
+                      <input
+                        type="url"
+                        value={relayUrl}
+                        onChange={(e) => {
+                          setRelayUrl(e.target.value);
+                          localStorage.setItem("kitashare-relay-url", e.target.value);
+                        }}
+                        placeholder="https://kitashare.rmdigital.co.id"
+                        className="w-full rounded-lg border border-border bg-muted px-3 py-2 text-sm outline-none focus:border-primary"
+                      />
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Viewers will access via this URL. No login required — session link is auto-generated.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Start/Stop Button */}
               {loading ? (
                 <Button disabled className="w-full" size="lg">
@@ -380,7 +542,7 @@ export default function App() {
                   </div>
                 )}
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-semibold">{profile.name || "Anonymous Host"}</p>
+                  <p className="truncate font-semibold">{profile.name || t("host.anonymousHost")}</p>
                   {profile.bio && (
                     <p className="truncate text-sm text-muted-foreground">{profile.bio}</p>
                   )}
@@ -405,7 +567,7 @@ export default function App() {
                     title="Click to enlarge QR"
                   >
                     <QRCodeSVG
-                      value={sessionInfo.url}
+                      value={sessionInfo.internetUrl || sessionInfo.url}
                       size={180}
                       level="M"
                       includeMargin={false}
@@ -419,7 +581,7 @@ export default function App() {
                 {/* URL */}
                 <div className="flex items-center gap-2">
                   <code className="flex-1 truncate rounded-lg border border-border bg-muted px-3 py-2 text-sm">
-                    {sessionInfo.url}
+                    {sessionInfo.internetUrl || sessionInfo.url}
                   </code>
                   <Button variant="outline" size="icon" onClick={handleCopy} aria-label={t("copy")}>
                     {copied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
@@ -488,7 +650,7 @@ export default function App() {
                     <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
                       <Maximize2 className="h-5 w-5 text-primary" />
                     </div>
-                    <span className="text-xs font-semibold">Fullscreen QR</span>
+                    <span className="text-xs font-semibold">{t("host.fullscreenQr")}</span>
                   </button>
                   <button
                     onClick={() => setShowSettings(true)}
@@ -497,7 +659,7 @@ export default function App() {
                     <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
                       <User className="h-5 w-5 text-primary" />
                     </div>
-                    <span className="text-xs font-semibold">Edit Profile</span>
+                    <span className="text-xs font-semibold">{t("host.editProfile")}</span>
                   </button>
                 </div>
               </CardContent>
@@ -514,36 +676,50 @@ export default function App() {
             <div className="flex h-14 items-center justify-between border-b border-border px-4">
               <div className="flex items-center gap-2">
                 <MessageSquare className="h-5 w-5 text-primary" />
-                <span className="font-semibold">Chat</span>
+                <span className="font-semibold">{t("host.chat")}</span>
                 {chatMessages.length > 0 && (
                   <Badge variant="default" className="text-xs">{chatMessages.length}</Badge>
                 )}
               </div>
-              <Button variant="ghost" size="icon" onClick={() => setShowChat(false)} aria-label="Close chat">
-                <X className="h-5 w-5" />
-              </Button>
+              <div className="flex items-center gap-1">
+                {chatMessages.length > 0 && (
+                  <Button variant="ghost" size="icon" onClick={() => setShowExportConfirm(true)} aria-label={t("host.exportChat")} title={t("host.exportChat")}>
+                    <Download className="h-4 w-4" />
+                  </Button>
+                )}
+                <Button variant="ghost" size="icon" onClick={() => setShowChat(false)} aria-label={t("host.closeChat")}>
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
             </div>
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
               {chatMessages.length === 0 ? (
                 <div className="flex h-full items-center justify-center text-center text-sm text-muted-foreground">
-                  No messages yet. Viewers can send you messages here.
+                  {t("host.noMessages")}
                 </div>
               ) : (
                 chatMessages.map((msg, i) => (
-                  <div key={i} className={`flex flex-col ${msg.isSelf ? "items-end" : "items-start"}`}>
+                  <div key={i} className={`flex flex-col ${msg.subtype === "rename" ? "items-center" : msg.isSelf ? "items-end" : "items-start"}`}>
                     <div className={`max-w-[85%] rounded-xl px-3 py-2 text-sm ${
+                      msg.subtype === "rename" ? "w-full bg-muted/50 border border-border text-center text-xs italic text-muted-foreground" :
                       msg.isSelf ? "bg-primary text-primary-foreground" : "bg-muted"
                     }`}>
-                      <div className="mb-0.5 text-xs font-semibold opacity-70">{msg.isSelf ? "You" : msg.user}</div>
+                      {msg.subtype === "rename" ? (
+                        <div>{t("host.renameMsg", { old: msg.text.split("|||")[0], new: msg.text.split("|||")[1] })}</div>
+                      ) : (
+                        <>
+                      <div className="mb-0.5 text-xs font-semibold opacity-70">{msg.isSelf ? t("host.you") : msg.user}</div>
                       {msg.subtype === "meme" ? (
                         <img src={msg.text} alt="Meme" className="mt-1 max-w-full rounded-lg" loading="lazy" />
                       ) : msg.subtype === "quote" ? (
                         <div className="border-l-2 border-primary/50 pl-2 italic">
                           <div>{msg.text.split("|||")[0]}</div>
-                          <div className="mt-1 text-xs not-italic opacity-70">— {msg.text.split("|||")[1] || "Unknown"}</div>
+                          <div className="mt-1 text-xs not-italic opacity-70">— {msg.text.split("|||")[1] || t("host.unknown")}</div>
                         </div>
                       ) : (
                         <div>{msg.text}</div>
+                      )}
+                      </>
                       )}
                       <div className="mt-1 text-[10px] opacity-50">
                         {new Date(msg.timestamp * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
@@ -554,6 +730,28 @@ export default function App() {
               )}
             </div>
             <div className="border-t border-border p-3">
+              <div className="mb-2 flex gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => openPicker("meme")}
+                  className="flex-1 gap-1.5 text-xs"
+                  aria-label={t("host.meme")}
+                >
+                  <Smile className="h-4 w-4" />
+                  {t("host.meme")}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => openPicker("quote")}
+                  className="flex-1 gap-1.5 text-xs"
+                  aria-label={t("host.quote")}
+                >
+                  <Quote className="h-4 w-4" />
+                  {t("host.quote")}
+                </Button>
+              </div>
               <div className="flex items-center gap-2">
                 <input
                   type="text"
@@ -561,30 +759,86 @@ export default function App() {
                   onChange={(e) => setChatInput(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && chatInput.trim()) {
-                      const text = chatInput.trim();
-                      setChatMessages((prev) => [...prev, { user: "Host", text, timestamp: Date.now() / 1000, subtype: "", isSelf: true }]);
-                      setChatInput("");
+                      handleSendChat();
                     }
                   }}
-                  placeholder="Type a message..."
+                  placeholder={t("host.typeMessage")}
                   className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
                   maxLength={1000}
                 />
                 <Button
                   variant="default"
                   size="icon"
-                  onClick={() => {
-                    if (chatInput.trim()) {
-                      const text = chatInput.trim();
-                      setChatMessages((prev) => [...prev, { user: "Host", text, timestamp: Date.now() / 1000, subtype: "", isSelf: true }]);
-                      setChatInput("");
-                    }
-                  }}
-                  aria-label="Send"
+                  onClick={handleSendChat}
+                  aria-label={t("host.send")}
                 >
                   <Send className="h-4 w-4" />
                 </Button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Meme/Quote Picker */}
+      {showPicker && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowPicker(null)}>
+          <div className="relative flex h-[70vh] w-full max-w-lg flex-col rounded-2xl border border-border bg-card shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex h-14 items-center justify-between border-b border-border px-4">
+              <span className="font-semibold">{showPicker === "meme" ? t("host.meme") : t("host.quote")}</span>
+              <Button variant="ghost" size="icon" onClick={() => setShowPicker(null)} aria-label={t("close")}>
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+            {showPicker === "quote" && (
+              <div className="border-b border-border p-3">
+                <input
+                  type="text"
+                  value={pickerSearch}
+                  onChange={(e) => setPickerSearch(e.target.value)}
+                  placeholder={t("host.typeMessage")}
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+                />
+              </div>
+            )}
+            <div className="flex-1 overflow-y-auto p-4">
+              {pickerLoading ? (
+                <div className="flex h-full items-center justify-center">
+                  <Spinner className="h-6 w-6" />
+                </div>
+              ) : showPicker === "meme" ? (
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {pickerItems.map((item, i) => (
+                    <button
+                      key={i}
+                      onClick={() => item.url && sendMeme(item.url)}
+                      className="overflow-hidden rounded-lg border border-border transition hover:border-primary"
+                    >
+                      <img src={item.url} alt="Meme" className="w-full" loading="lazy" />
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {pickerItems
+                    .filter((item) => {
+                      if (!pickerSearch) return true;
+                      const f = pickerSearch.toLowerCase();
+                      return (item.text || "").toLowerCase().includes(f) || (item.author || "").toLowerCase().includes(f);
+                    })
+                    .slice(0, 100)
+                    .map((item, i) => (
+                      <button
+                        key={i}
+                        onClick={() => item.text && sendQuote(item.text, item.author || t("host.unknown"))}
+                        className="w-full rounded-lg border border-border p-3 text-left transition hover:border-primary"
+                      >
+                        <p className="text-sm italic">{item.text}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">— {item.author}</p>
+                      </button>
+                    ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -598,7 +852,7 @@ export default function App() {
             <div className="flex h-14 items-center justify-between border-b border-border px-4">
               <div className="flex items-center gap-2">
                 <FolderOpen className="h-5 w-5 text-primary" />
-                <span className="font-semibold">Shared Files</span>
+                <span className="font-semibold">{t("host.sharedFiles")}</span>
                 {sharedFiles.length > 0 && (
                   <Badge variant="default" className="text-xs">{sharedFiles.length}</Badge>
                 )}
@@ -608,16 +862,20 @@ export default function App() {
                   variant="ghost"
                   size="icon"
                   onClick={async () => {
-                    const paths = await openFileDialog();
-                    if (paths.length > 0) {
-                      const added = await shareFiles(paths);
-                      setSharedFiles((prev) => [...prev, ...added]);
+                    try {
+                      const paths = await openFileDialog();
+                      if (paths.length > 0) {
+                        const added = await shareFiles(paths);
+                        setSharedFiles((prev) => [...prev, ...added]);
+                      }
+                    } catch (err) {
+                      console.error("Failed to add files:", err);
                     }
                   }}
-                  aria-label="Add files"
-                  title="Add files"
+                  aria-label={t("host.addFiles")}
+                  title={t("host.addFiles")}
                 >
-                  <FileText className="h-5 w-5" />
+                  <FilePlus2 className="h-5 w-5" />
                 </Button>
                 {sharedFiles.length > 0 && (
                   <Button
@@ -627,13 +885,13 @@ export default function App() {
                       await clearFiles();
                       setSharedFiles([]);
                     }}
-                    aria-label="Clear all"
-                    title="Clear all"
+                    aria-label={t("host.clearAll")}
+                    title={t("host.clearAll")}
                   >
                     <Trash2 className="h-5 w-5" />
                   </Button>
                 )}
-                <Button variant="ghost" size="icon" onClick={() => setShowFiles(false)} aria-label="Close">
+                <Button variant="ghost" size="icon" onClick={() => setShowFiles(false)} aria-label={t("close")}>
                   <X className="h-5 w-5" />
                 </Button>
               </div>
@@ -641,7 +899,7 @@ export default function App() {
             <div className="flex-1 overflow-y-auto p-4 space-y-2">
               {sharedFiles.length === 0 ? (
                 <div className="flex h-full items-center justify-center text-center text-sm text-muted-foreground">
-                  No files shared yet. Click the add button to share files with viewers.
+                  {t("host.noFilesShared")}
                 </div>
               ) : (
                 sharedFiles.map((file) => (
@@ -665,8 +923,8 @@ export default function App() {
                         await removeFile(file.id);
                         setSharedFiles((prev) => prev.filter((f) => f.id !== file.id));
                       }}
-                      aria-label="Remove file"
-                      title="Remove"
+                      aria-label={t("host.removeFile")}
+                      title={t("host.removeFile")}
                       className="text-muted-foreground hover:text-destructive"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -688,7 +946,7 @@ export default function App() {
           <button
             className="absolute right-4 top-4 rounded-lg p-2 text-white/70 transition-colors hover:bg-white/10 hover:text-white"
             onClick={() => setShowQrFullscreen(false)}
-            aria-label="Close"
+            aria-label={t("close")}
           >
             <X className="h-6 w-6" />
           </button>
@@ -716,7 +974,7 @@ export default function App() {
             </div>
             <div>
               <p className="text-sm font-semibold">
-                {raiseHandNotifications[0].user} raised their hand!
+                {t("host.raisedHandNotif", { user: raiseHandNotifications[0].user })}
               </p>
               <p className="text-xs text-muted-foreground">
                 {new Date(raiseHandNotifications[0].timestamp * 1000).toLocaleTimeString()}
@@ -758,7 +1016,7 @@ export default function App() {
               <div className="space-y-3 border-b border-border pb-4">
                 <div className="flex items-center gap-2 text-sm font-semibold">
                   <User className="h-4 w-4" />
-                  Sharer Profile
+                  {t("host.sharerProfile")}
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="relative">
@@ -806,7 +1064,7 @@ export default function App() {
                       value={profileName}
                       onChange={(e) => setProfileName(e.target.value)}
                       onBlur={() => profile.setName(profileName.trim())}
-                      placeholder="Your name"
+                      placeholder={t("host.yourName")}
                       className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
                       maxLength={50}
                     />
@@ -816,7 +1074,7 @@ export default function App() {
                   value={profileBio}
                   onChange={(e) => setProfileBio(e.target.value)}
                   onBlur={() => profile.setBio(profileBio.trim())}
-                  placeholder="Short bio (optional)"
+                  placeholder={t("host.shortBio")}
                   className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary resize-none"
                   rows={2}
                   maxLength={200}
@@ -889,6 +1147,37 @@ export default function App() {
                   aria-label={t("settings.visualNotifications")}
                 />
               </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Export Chat Confirmation */}
+      {showExportConfirm && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={() => setShowExportConfirm(false)}
+        >
+          <Card
+            className="w-full max-w-sm"
+            onClick={(e: React.MouseEvent) => e.stopPropagation()}
+          >
+            <CardHeader>
+              <CardTitle>{t("host.exportChat")}</CardTitle>
+              <CardDescription>{t("host.exportChatDesc")}</CardDescription>
+            </CardHeader>
+            <CardContent className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowExportConfirm(false)}>
+                {t("common.cancel")}
+              </Button>
+              <Button
+                onClick={() => {
+                  exportChatCsv();
+                  setShowExportConfirm(false);
+                }}
+              >
+                {t("host.exportChat")}
+              </Button>
             </CardContent>
           </Card>
         </div>

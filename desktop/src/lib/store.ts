@@ -93,6 +93,7 @@ interface SessionInfo {
   width: number;
   height: number;
   fps: number;
+  internetUrl?: string | null;
 }
 
 interface ShareState {

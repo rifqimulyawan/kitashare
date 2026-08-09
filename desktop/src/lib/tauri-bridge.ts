@@ -12,6 +12,7 @@ export interface SessionInfo {
   width: number;
   height: number;
   fps: number;
+  internetUrl?: string | null;
 }
 
 export interface DisplayInfo {
@@ -98,4 +99,44 @@ export async function openFileDialog(): Promise<string[]> {
   if (!result) return [];
   if (Array.isArray(result)) return result as string[];
   return [result as string];
+}
+
+export async function startInternetSharing(
+  relayUrl: string,
+  displayIndex?: number,
+  quality?: number,
+  fps?: number,
+  hostName?: string,
+  hostAvatar?: string,
+  hostBio?: string,
+): Promise<SessionInfo> {
+  return invoke<SessionInfo>("start_internet_sharing", {
+    relayUrl,
+    displayIndex: displayIndex ?? null,
+    quality: quality ?? null,
+    fps: fps ?? null,
+    hostName: hostName ?? null,
+    hostAvatar: hostAvatar ?? null,
+    hostBio: hostBio ?? null,
+  });
+}
+
+export async function getInternetRelayUrl(): Promise<string | null> {
+  return invoke<string | null>("get_internet_relay_url");
+}
+
+export async function updateInternetProfile(
+  hostName?: string,
+  hostAvatar?: string,
+  hostBio?: string,
+): Promise<void> {
+  return invoke("update_internet_profile", {
+    hostName: hostName ?? null,
+    hostAvatar: hostAvatar ?? null,
+    hostBio: hostBio ?? null,
+  });
+}
+
+export async function sendChat(text: string, subtype?: string): Promise<void> {
+  return invoke("send_chat", { text, subtype: subtype ?? null });
 }

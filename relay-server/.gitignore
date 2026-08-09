@@ -1,0 +1,6 @@
+node_modules/
+dist/
+*.tar.gz
+.deploy_manifest_kitashare.json
+.env
+secret.json

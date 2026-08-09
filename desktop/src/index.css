@@ -101,9 +101,42 @@ body {
   outline-offset: 2px;
 }
 
-/* High contrast */
+/* High contrast — matches viewer high contrast theme */
+[data-contrast="high"] {
+  --primary: 60 100% 50%;
+  --primary-foreground: 0 0% 0%;
+  --secondary: 0 0% 10%;
+  --secondary-foreground: 0 0% 100%;
+  --destructive: 0 100% 50%;
+  --destructive-foreground: 0 0% 100%;
+  --muted: 0 0% 10%;
+  --muted-foreground: 0 0% 90%;
+  --accent: 0 0% 10%;
+  --accent-foreground: 0 0% 100%;
+  --card: 0 0% 5%;
+  --card-foreground: 0 0% 100%;
+  --border: 0 0% 100%;
+  --input: 0 0% 100%;
+  --ring: 60 100% 50%;
+  --background: 0 0% 0%;
+  --foreground: 0 0% 100%;
+  --warning: 60 100% 50%;
+  --warning-foreground: 0 0% 0%;
+}
 [data-contrast="high"] * {
-  border-color: hsl(var(--foreground) / 0.6) !important;
+  border-color: hsl(0 0% 100% / 0.4) !important;
+}
+[data-contrast="high"] button,
+[data-contrast="high"] input,
+[data-contrast="high"] textarea,
+[data-contrast="high"] [role="button"] {
+  border: 1px solid hsl(0 0% 100%) !important;
+}
+[data-contrast="high"] [class*="border-2"],
+[data-contrast="high"] [class*="rounded-lg"],
+[data-contrast="high"] [class*="rounded-xl"],
+[data-contrast="high"] [class*="rounded-2xl"] {
+  border: 2px solid hsl(0 0% 100%) !important;
 }
 [data-contrast="high"] *:focus-visible {
   outline: 3px solid #fbbf24 !important;

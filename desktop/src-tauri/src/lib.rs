@@ -28,6 +28,10 @@ pub fn run() {
             commands::share_files,
             commands::clear_files,
             commands::remove_file,
+            commands::start_internet_sharing,
+            commands::get_internet_relay_url,
+            commands::update_internet_profile,
+            commands::send_chat,
         ])
         .run(tauri::generate_context!())
         .expect("error while running KitaShare");
