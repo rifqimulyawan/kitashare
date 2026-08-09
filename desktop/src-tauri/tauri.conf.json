@@ -40,7 +40,6 @@
     "category": "Utility",
     "shortDescription": "KitaShare - Fast Screen Sharing",
     "longDescription": "Cross-platform screen sharing with real-time streaming, chat, and accessibility support.",
-    "resources": ["relay-secret.txt"],
     "windows": {
       "wix": {
         "language": "en-US"
