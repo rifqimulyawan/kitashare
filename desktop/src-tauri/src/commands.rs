@@ -824,13 +824,14 @@ pub fn start_internet_sharing(
                                         "user": user,
                                         "timestamp": ts
                                     }));
+                                } else {
+                                    let _ = poll_app.emit("chat_message", serde_json::json!({
+                                        "user": user,
+                                        "text": text,
+                                        "timestamp": ts,
+                                        "subtype": subtype
+                                    }));
                                 }
-                                let _ = poll_app.emit("chat_message", serde_json::json!({
-                                    "user": user,
-                                    "text": text,
-                                    "timestamp": ts,
-                                    "subtype": subtype
-                                }));
                             }
                         }
                     }

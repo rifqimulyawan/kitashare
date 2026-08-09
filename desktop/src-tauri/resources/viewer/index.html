@@ -1370,6 +1370,7 @@ body.immersive .immersive-exit { display: flex; }
           if (msg.messages) {
             msg.messages.forEach(function(m) {
               if (m.subtype === 'rename') return;
+              if (m.subtype === 'raise_hand') return;
               addChatMessage(m.user, m.text, m.timestamp, false, m.subtype || '');
             });
           }
