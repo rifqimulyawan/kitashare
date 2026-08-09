@@ -212,18 +212,15 @@ input { font-family: inherit; }
 .chat-header-actions { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
 .chat-header-actions .icon-btn { width: 30px; height: 30px; }
 .chat-header-actions .icon-btn svg { width: 16px; height: 16px; }
-.chat-header:has(.host-profile:not([style*="display:none"])) {
-  flex-direction: column; align-items: stretch;
+.host-profile-bar {
+  padding: 6px 12px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 8px; min-width: 0;
+  transition: border-color 0.3s var(--ease);
 }
-.chat-header:has(.host-profile:not([style*="display:none"])) .chat-header-left {
-  flex: none;
-}
-.chat-header:has(.host-profile:not([style*="display:none"])) #chat-title {
-  padding-top: 4px;
-}
-.host-profile { max-width: 100%; }
-.host-profile-name { max-width: 200px; }
+.host-profile-bar .host-profile { display: flex; align-items: center; gap: 8px; max-width: 100%; }
+.host-profile-name { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 600; }
 .host-profile-info { min-width: 0; overflow: hidden; }
+.host-profile-bio { font-size: 11px; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .chat-messages {
   flex: 1; overflow-y: auto; padding: 12px 16px;
   display: flex; flex-direction: column; gap: 8px;
@@ -382,7 +379,7 @@ input { font-family: inherit; }
   .chat-panel { width: 90%; }
   .a11y-panel { right: 12px; left: 12px; min-width: auto; }
   .topbar-left { gap: 8px; }
-  .host-profile { padding: 4px 8px; }
+  .host-profile-bar { padding: 4px 8px; }
   .host-profile-avatar, .host-profile-avatar-fallback { width: 28px; height: 28px; font-size: 13px; }
 }
 
@@ -665,29 +662,22 @@ body.immersive .immersive-exit { display: flex; }
 .nickname-card button:hover { background: var(--primary-hover); }
 .nickname-card button:active { transform: scale(0.97); }
 
-/* Host profile in viewer — inside chat panel header */
+/* Host profile in viewer — inside chat panel host-profile-bar */
 .host-profile {
-  display: flex; align-items: center; gap: 10px;
-  padding: 6px 12px; border-radius: 10px;
-  background: var(--surface-2); transition: background 0.3s var(--ease);
+  display: flex; align-items: center; gap: 8px;
   max-width: 100%; overflow: hidden;
-  border: 1px solid var(--border);
 }
 .host-profile-avatar {
-  width: 36px; height: 36px; border-radius: 50%; object-fit: cover;
+  width: 28px; height: 28px; border-radius: 50%; object-fit: cover;
   border: 2px solid var(--border); flex-shrink: 0;
 }
 .host-profile-avatar-fallback {
-  width: 36px; height: 36px; border-radius: 50%;
+  width: 28px; height: 28px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
   background: var(--primary-light); color: var(--primary);
   font-weight: 700; font-size: 16px; flex-shrink: 0;
   border: 2px solid var(--border);
 }
-.host-profile-info { min-width: 0; flex: 1; }
-.host-profile-name { font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.host-profile-bio { font-size: 12px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
 /* File items in viewer */
 .file-item {
   display: flex; align-items: center; gap: 10px;
@@ -825,13 +815,6 @@ body.immersive .immersive-exit { display: flex; }
   <div id="chat-panel" class="chat-panel hidden" role="complementary" aria-label="Chat panel">
     <div class="chat-header">
       <div class="chat-header-left">
-        <div id="host-profile" class="host-profile" style="display:none">
-          <div id="host-avatar-container"></div>
-          <div class="host-profile-info">
-            <div class="host-profile-name" id="host-name"></div>
-            <div class="host-profile-bio" id="host-bio"></div>
-          </div>
-        </div>
         <span data-i18n="chat" id="chat-title">Chat</span>
       </div>
       <div class="chat-header-actions">
@@ -841,6 +824,15 @@ body.immersive .immersive-exit { display: flex; }
         <button class="icon-btn" id="chat-close" aria-label="Close chat">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
+      </div>
+    </div>
+    <div id="host-profile-bar" class="host-profile-bar" style="display:none">
+      <div id="host-profile" class="host-profile">
+        <div id="host-avatar-container"></div>
+        <div class="host-profile-info">
+          <div class="host-profile-name" id="host-name"></div>
+          <div class="host-profile-bio" id="host-bio"></div>
+        </div>
       </div>
     </div>
     <div id="chat-messages" class="chat-messages" role="log" aria-live="polite" aria-label="Chat messages">
@@ -1283,7 +1275,7 @@ body.immersive .immersive-exit { display: flex; }
   }
 
   function renderHostProfile(host) {
-    var el = document.getElementById('host-profile');
+    var el = document.getElementById('host-profile-bar');
     var nameEl = document.getElementById('host-name');
     var bioEl = document.getElementById('host-bio');
     var avatarContainer = document.getElementById('host-avatar-container');
