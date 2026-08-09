@@ -24,6 +24,7 @@ import {
   FilePlus2,
   Trash2,
   Download,
+  Upload,
   Smile,
   Quote,
 } from "lucide-react";
@@ -81,6 +82,7 @@ export default function App() {
   const [profileBio, setProfileBio] = useState(profile.bio);
   const [showFiles, setShowFiles] = useState(false);
   const [sharedFiles, setSharedFiles] = useState<SharedFileInfo[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
   const [showExportConfirm, setShowExportConfirm] = useState(false);
   const [showPicker, setShowPicker] = useState<"meme" | "quote" | null>(null);
   const [pickerItems, setPickerItems] = useState<{url?: string; text?: string; author?: string}[]>([]);
@@ -95,6 +97,31 @@ export default function App() {
       .then(setDisplays)
       .catch(() => setDisplays([{ index: 0, width: 1920, height: 1080 }]));
   }, []);
+
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    let active = true;
+    (async () => {
+      const { getCurrentWebview } = await import("@tauri-apps/api/webview");
+      unlisten = await getCurrentWebview().onDragDropEvent((event) => {
+        if (!active) return;
+        const e = event.payload;
+        if (e.type === "enter" || e.type === "over") {
+          if (showFiles) setIsDragging(true);
+        } else if (e.type === "drop") {
+          setIsDragging(false);
+          if (showFiles && e.paths.length > 0) {
+            shareFiles(e.paths)
+              .then((added) => setSharedFiles((prev) => [...prev, ...added]))
+              .catch((err) => console.error("Failed to add dropped files:", err));
+          }
+        } else if (e.type === "leave") {
+          setIsDragging(false);
+        }
+      });
+    })();
+    return () => { active = false; if (unlisten) unlisten(); };
+  }, [showFiles]);
 
   const handleStart = useCallback(async () => {
     setIsStarting(true);
@@ -951,11 +978,30 @@ export default function App() {
                 </Button>
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto p-4 space-y-2">
+            <div
+              className={`flex-1 overflow-y-auto p-4 space-y-2 transition-colors ${isDragging ? "bg-primary/5" : ""}`}
+            >
               {sharedFiles.length === 0 ? (
-                <div className="flex h-full items-center justify-center text-center text-sm text-muted-foreground">
-                  {t("host.noFilesShared")}
-                </div>
+                <button
+                  onClick={async () => {
+                    try {
+                      const paths = await openFileDialog();
+                      if (paths.length > 0) {
+                        const added = await shareFiles(paths);
+                        setSharedFiles((prev) => [...prev, ...added]);
+                      }
+                    } catch (err) {
+                      console.error("Failed to add files:", err);
+                    }
+                  }}
+                  className="flex h-full w-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-border p-8 text-center transition-colors hover:border-primary/50 hover:bg-primary/5"
+                >
+                  <Upload className="h-10 w-10 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">{t("host.dragDropHint")}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{t("host.dragDropOrClick")}</p>
+                  </div>
+                </button>
               ) : (
                 sharedFiles.map((file) => (
                   <div key={file.id} className="flex items-center gap-3 rounded-xl border border-border p-3">
@@ -986,6 +1032,12 @@ export default function App() {
                     </Button>
                   </div>
                 ))
+              )}
+              {isDragging && sharedFiles.length > 0 && (
+                <div className="flex items-center justify-center rounded-xl border-2 border-dashed border-primary/50 bg-primary/5 p-4 text-sm font-medium text-primary">
+                  <Upload className="mr-2 h-4 w-4" />
+                  {t("host.dragDropHint")}
+                </div>
               )}
             </div>
           </div>
