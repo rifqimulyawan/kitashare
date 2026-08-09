@@ -1224,7 +1224,7 @@ body.immersive .immersive-exit { display: flex; }
       viewerNickname = name;
       localStorage.setItem('kitashare-nickname', name);
       overlay.classList.remove('visible');
-      fetchHostProfile();
+      startPolling();
       connect();
     }
 
@@ -1260,16 +1260,27 @@ body.immersive .immersive-exit { display: flex; }
   }
 
   // Poll for file availability and host profile every 5 seconds
-  setInterval(function() {
-    if (!sessionId) return;
-    fetch(baseUrl + '/api/info/' + sessionId).then(function(r) { return r.json(); }).then(function(data) {
-      updateFilesButton(data.files || 0);
-      if (data.host && data.host.name) {
-        hostProfile = data.host;
-        renderHostProfile(data.host);
-      }
-    }).catch(function() {});
-  }, 5000);
+  var pollTimer = null;
+  function startPolling() {
+    if (pollTimer) return;
+    pollTimer = setInterval(function() {
+      if (!sessionId) return;
+      fetch(baseUrl + '/api/info/' + sessionId).then(function(r) {
+        if (r.status === 404) { stopPolling(); return; }
+        return r.json();
+      }).then(function(data) {
+        if (!data) return;
+        updateFilesButton(data.files || 0);
+        if (data.host && data.host.name) {
+          hostProfile = data.host;
+          renderHostProfile(data.host);
+        }
+      }).catch(function() {});
+    }, 5000);
+  }
+  function stopPolling() {
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+  }
 
   function renderHostProfile(host) {
     var el = document.getElementById('host-profile');
@@ -1437,6 +1448,7 @@ body.immersive .immersive-exit { display: flex; }
         qualityBars.style.display = 'none';
         fpsText.style.display = 'none';
         if (eventSource) { eventSource.close(); eventSource = null; }
+        stopPolling();
         break;
       case 'error':
         setStatus('disconnected');

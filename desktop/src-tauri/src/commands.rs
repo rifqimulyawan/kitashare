@@ -659,6 +659,9 @@ pub fn start_internet_sharing(
 
     let (resp_body, status_code) = resp.unwrap_or((String::new(), 0));
     eprintln!("[Internet] Final status: {}", status_code);
+    if status_code == 0 {
+        return Err("Cannot connect to relay server. Check your internet connection and try again.".to_string());
+    }
     if status_code < 200 || status_code >= 300 {
         eprintln!("[Internet] Error body: {}", resp_body);
         return Err(format!("Relay server error: {}", status_code));
@@ -811,6 +814,7 @@ pub fn update_internet_profile(
     let bio = host_bio.unwrap_or_default();
     *state.internet_host_name.lock() = name.clone();
 
+    let publisher_token = state.internet_publisher_token.lock().clone();
     let info_url = format!("{}/api/publish/{}/info", relay_url, session_id);
     let body = serde_json::json!({
         "hostName": name,
@@ -818,12 +822,7 @@ pub fn update_internet_profile(
         "hostBio": bio,
     });
     let body_str = body.to_string();
-    tauri::async_runtime::spawn(async move {
-        let _ = async_client(5).post(&info_url)
-            .header("Content-Type", "application/json")
-            .body(body_str)
-            .send().await;
-    });
+    let _ = blocking_post_json(&info_url, &body_str, &publisher_token, 5);
     Ok(())
 }
 
