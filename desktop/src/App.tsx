@@ -362,13 +362,13 @@ export default function App() {
             <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-md">
               <div
                 className="flex flex-col items-center gap-6 rounded-3xl border border-border bg-card p-10 shadow-2xl"
-                style={{ animation: "overlayFadeIn 0.5s ease-out !important, overlayZoomIn 0.5s ease-out !important" }}
+                style={{ animation: "overlayFadeIn 0.5s ease-out, overlayZoomIn 0.5s ease-out" }}
               >
                 <div className="relative h-16 w-16">
                   <div className="absolute inset-0 rounded-full border-4 border-muted" />
                   <div
                     className="absolute inset-0 rounded-full border-4 border-primary border-t-transparent"
-                    style={{ animation: "overlaySpin 1.8s linear infinite !important" }}
+                    style={{ animation: "overlaySpin 1.8s linear infinite" }}
                   />
                 </div>
                 <div className="flex flex-col items-center gap-3">
@@ -376,15 +376,15 @@ export default function App() {
                   <div className="flex gap-2">
                     <span
                       className="h-2.5 w-2.5 rounded-full bg-primary"
-                      style={{ animation: "overlayBounce 1.4s ease-in-out infinite !important", animationDelay: "0ms" }}
+                      style={{ animation: "overlayBounce 1.4s ease-in-out infinite", animationDelay: "0ms" }}
                     />
                     <span
                       className="h-2.5 w-2.5 rounded-full bg-primary"
-                      style={{ animation: "overlayBounce 1.4s ease-in-out infinite !important", animationDelay: "200ms" }}
+                      style={{ animation: "overlayBounce 1.4s ease-in-out infinite", animationDelay: "200ms" }}
                     />
                     <span
                       className="h-2.5 w-2.5 rounded-full bg-primary"
-                      style={{ animation: "overlayBounce 1.4s ease-in-out infinite !important", animationDelay: "400ms" }}
+                      style={{ animation: "overlayBounce 1.4s ease-in-out infinite", animationDelay: "400ms" }}
                     />
                   </div>
                 </div>

@@ -143,11 +143,11 @@ body {
   outline-offset: 3px !important;
 }
 
-/* Reduced motion */
+/* Reduced motion — inline styles override this naturally */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms;
+    transition-duration: 0.01ms;
   }
 }
 
