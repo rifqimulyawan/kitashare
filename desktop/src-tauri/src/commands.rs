@@ -7,7 +7,7 @@ use sha2::Sha256;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::thread;
-use tauri::{Emitter, State};
+use tauri::{Emitter, Manager, State};
 use tokio::sync::broadcast;
 use uuid::Uuid;
 
@@ -556,18 +556,37 @@ pub fn start_internet_sharing(
     // Generate publisher token (HMAC-SHA256)
     let relay_secret = std::env::var("KITASHARE_RELAY_SECRET").unwrap_or_default();
     let relay_secret = if relay_secret.is_empty() {
-        // Try reading from relay-secret.txt next to the executable
-        let exe_dir = std::env::current_exe()
-            .ok()
-            .and_then(|p| p.parent().map(|d| d.join("relay-secret.txt")));
-        if let Some(path) = exe_dir {
-            std::fs::read_to_string(&path)
-                .ok()
-                .map(|s| s.trim().to_string())
-                .unwrap_or_default()
-        } else {
-            String::new()
+        // Try reading from relay-secret.txt — check multiple locations
+        let mut found_secret = String::new();
+
+        // 1. Try Tauri resource directory (release build bundles it here)
+        if let Ok(resource_dir) = app.path().resource_dir() {
+            let path = resource_dir.join("relay-secret.txt");
+            if let Ok(content) = std::fs::read_to_string(&path) {
+                found_secret = content.trim().to_string();
+            }
         }
+
+        // 2. Try next to the executable (dev mode or flat deployment)
+        if found_secret.is_empty() {
+            if let Some(exe_dir) = std::env::current_exe()
+                .ok()
+                .and_then(|p| p.parent().map(|d| d.join("relay-secret.txt")))
+            {
+                if let Ok(content) = std::fs::read_to_string(&exe_dir) {
+                    found_secret = content.trim().to_string();
+                }
+            }
+        }
+
+        // 3. Try current working directory (dev mode)
+        if found_secret.is_empty() {
+            if let Ok(content) = std::fs::read_to_string("relay-secret.txt") {
+                found_secret = content.trim().to_string();
+            }
+        }
+
+        found_secret
     } else {
         relay_secret
     };
