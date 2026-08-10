@@ -1670,7 +1670,7 @@ body.immersive .immersive-exit { display: flex; }
       var actionBtn = div.querySelector('.file-shared-action');
       if (actionBtn) {
         actionBtn.addEventListener('click', function() {
-          if (filesBtn) filesBtn.click();
+          openFiles();
         });
       }
     } else {
