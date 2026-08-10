@@ -149,6 +149,11 @@ pub fn start_sharing(
         return Err("Already sharing".to_string());
     }
 
+    // Clear internet relay state when starting LAN sharing
+    *state.internet_session_id.lock() = None;
+    *state.internet_relay_url.lock() = None;
+    *state.internet_publisher_token.lock() = String::new();
+
     let display_idx = display_index.unwrap_or(state.display_index);
     let jpeg_quality = quality.unwrap_or(state.quality);
     let target_fps = fps.unwrap_or(state.fps);
