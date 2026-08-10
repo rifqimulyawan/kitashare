@@ -579,7 +579,7 @@ export default function App() {
                       }`}
                     >
                       <Wifi className="h-4 w-4" />
-                      LAN
+                      {t("host.lan")}
                     </button>
                     <button
                       onClick={() => setShareMode("internet")}
@@ -590,13 +590,13 @@ export default function App() {
                       }`}
                     >
                       <Globe className="h-4 w-4" />
-                      Internet
+                      {t("host.internet")}
                     </button>
                   </div>
                   {shareMode === "internet" && (
                     <div>
                       <label className="mb-1.5 block text-xs font-semibold text-muted-foreground">
-                        Relay Server URL
+                        {t("host.relayServerUrl")}
                       </label>
                       <input
                         type="url"
@@ -609,7 +609,7 @@ export default function App() {
                         className="w-full rounded-lg border border-border bg-muted px-3 py-2 text-sm outline-none focus:border-primary"
                       />
                       <p className="mt-1 text-xs text-muted-foreground">
-                        Viewers will access via this URL. No login required — session link is auto-generated.
+                        {t("host.relayUrlHint")}
                       </p>
                     </div>
                   )}
@@ -670,7 +670,7 @@ export default function App() {
                   <div
                     className="relative cursor-pointer rounded-xl border border-border bg-white p-4 transition-transform hover:scale-105"
                     onClick={() => setShowQrFullscreen(true)}
-                    title="Click to enlarge QR"
+                    title={t("host.clickToEnlarge")}
                   >
                     <QRCodeSVG
                       value={sessionInfo.internetUrl || sessionInfo.url}
@@ -732,7 +732,7 @@ export default function App() {
                     <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
                       <FolderOpen className="h-5 w-5 text-primary" />
                     </div>
-                    <span className="text-xs font-semibold">Share Files</span>
+                    <span className="text-xs font-semibold">{t("host.sharedFiles")}</span>
                     {sharedFiles.length > 0 && (
                       <Badge variant="default" className="text-[10px]">{sharedFiles.length}</Badge>
                     )}
@@ -744,7 +744,7 @@ export default function App() {
                     <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
                       <MessageSquare className="h-5 w-5 text-primary" />
                     </div>
-                    <span className="text-xs font-semibold">Chat</span>
+                    <span className="text-xs font-semibold">{t("host.chat")}</span>
                     {chatMessages.length > 0 && (
                       <Badge variant="default" className="text-[10px]">{chatMessages.length}</Badge>
                     )}
