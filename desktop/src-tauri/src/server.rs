@@ -330,15 +330,32 @@ async fn handle_ws_connection(socket: WebSocket, state: Arc<ServerState>) {
                                 .and_then(|c| c.as_str())
                                 .unwrap_or("")
                                 .to_string();
+                            let ts = std::time::SystemTime::now()
+                                .duration_since(std::time::UNIX_EPOCH)
+                                .unwrap_or_default()
+                                .as_secs();
+
+                            // Store in chat history
+                            {
+                                let mut messages = chat_messages.lock();
+                                messages.push(ChatMessage {
+                                    user: user.clone(),
+                                    text: "raised their hand".to_string(),
+                                    timestamp: ts,
+                                    subtype: "raise_hand".to_string(),
+                                    client_id: client_id.clone(),
+                                });
+                                if messages.len() > 200 {
+                                    let drain_to = messages.len() - 200;
+                                    messages.drain(0..drain_to);
+                                }
+                            }
 
                             let broadcast = serde_json::json!({
                                 "type": "raise_hand",
                                 "user": user,
                                 "clientId": client_id,
-                                "timestamp": std::time::SystemTime::now()
-                                    .duration_since(std::time::UNIX_EPOCH)
-                                    .unwrap_or_default()
-                                    .as_secs()
+                                "timestamp": ts
                             });
                             if let Ok(broadcast_str) = serde_json::to_string(&broadcast) {
                                 let _ = raise_hand_tx.send(broadcast_str.clone());

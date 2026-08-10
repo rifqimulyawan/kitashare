@@ -360,7 +360,7 @@ pub fn stop_sharing(state: State<ShareState>) -> Result<(), String> {
         handle.abort();
     }
 
-    // Notify relay server that session is stopped
+    // Notify relay server that session is stopped (pauses session, preserves chat history & files)
     if let (Some(session_id), Some(relay_url)) = (
         state.internet_session_id.lock().as_ref(),
         state.internet_relay_url.lock().as_ref(),
@@ -369,10 +369,8 @@ pub fn stop_sharing(state: State<ShareState>) -> Result<(), String> {
         let _ = blocking_post_json(&url, "", "", 5);
     }
 
-    *state.internet_session_id.lock() = None;
-    *state.internet_relay_url.lock() = None;
-    *state.internet_publisher_token.lock() = String::new();
-
+    // Note: internet_session_id, internet_relay_url, and internet_publisher_token
+    // are NOT cleared — preserved so host can resume the same session link after restart
     *state.server_state.lock() = None;
     *state.active_port.lock() = None;
     // Note: shared_files are NOT cleared — preserved for reconnection
@@ -517,6 +515,21 @@ fn send_file_shared_notification(state: &ShareState, file_names: &str) {
             "subtype": "file_shared",
             "clientId": "__host__"
         });
+        // Store in chat history
+        {
+            let mut messages = ss.chat_messages.lock();
+            messages.push(server::ChatMessage {
+                user: host_name.clone(),
+                text: file_names.to_string(),
+                timestamp,
+                subtype: "file_shared".to_string(),
+                client_id: "__host__".to_string(),
+            });
+            if messages.len() > 200 {
+                let drain_to = messages.len() - 200;
+                messages.drain(0..drain_to);
+            }
+        }
         if let Ok(broadcast_str) = serde_json::to_string(&chat_msg) {
             let _ = ss.chat_tx.send(broadcast_str);
         }
@@ -637,8 +650,12 @@ pub fn start_internet_sharing(
     let capture = ScreenCapture::new(display_idx)?;
     let (width, height) = capture.dimensions();
 
-    // Generate session ID
-    let session_id = Uuid::new_v4().to_string();
+    // Reuse existing session ID if available (host paused and is resuming)
+    let session_id = if let Some(existing_id) = state.internet_session_id.lock().clone() {
+        existing_id
+    } else {
+        Uuid::new_v4().to_string()
+    };
 
     // Generate publisher token (HMAC-SHA256)
     let relay_secret = std::env::var("KITASHARE_RELAY_SECRET").unwrap_or_default();

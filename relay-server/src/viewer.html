@@ -803,6 +803,7 @@ body.immersive .immersive-exit { display: flex; }
     <div id="loading-overlay" class="loading-overlay">
       <div class="spinner"></div>
       <p id="loading-text">Connecting to host...</p>
+      <button id="reconnect-btn" type="button" style="display:none; margin-top:8px; padding:8px 20px; border:1px solid rgba(255,255,255,0.3); border-radius:8px; background:rgba(255,255,255,0.1); color:#fff; font-size:14px; cursor:pointer; transition:background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.2)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'"></button>
     </div>
     <!-- Floating status + FPS overlay -->
     <div class="stream-status disconnected" id="stream-status" role="status" aria-live="polite">
@@ -968,6 +969,7 @@ body.immersive .immersive-exit { display: flex; }
   let ctx = canvas.getContext('2d');
   let loadingOverlay = document.getElementById('loading-overlay');
   let loadingText = document.getElementById('loading-text');
+  let reconnectBtn = document.getElementById('reconnect-btn');
   let statusBadge = document.getElementById('stream-status');
   let statusText = document.getElementById('status-text');
   let qualityBars = document.getElementById('quality-bars');
@@ -1006,9 +1008,9 @@ body.immersive .immersive-exit { display: flex; }
 
   // i18n
   const translations = {
-    en: { connecting: 'Connecting to host...', disconnected: 'Disconnected', connected: 'Connected', waitingHost: 'Waiting for host to start...', streamEnded: 'Stream has ended', hostPaused: 'Host paused sharing. Waiting for reconnect...', reconnecting: 'Reconnecting...', typeMsg: 'Type a message...', send: 'Send', fullscreen: 'Fullscreen', rotate: 'Rotate', landscapeMode: 'Landscape mode', normalMode: 'Normal mode', raiseHand: 'Raise Hand', snapshot: 'Snapshot', files: 'Files', sharedFiles: 'Shared Files', accessibility: 'Accessibility', highContrast: 'High Contrast', largeText: 'Large Text', visualNotif: 'Visual Notifications', snapshotSaved: 'Snapshot saved', chatEmpty: 'No messages yet. Start the conversation!', chat: 'Chat', noFiles: 'No files shared by host yet.', loadingFiles: 'Loading files...', loadFilesFailed: 'Failed to load files.', noStream: 'No stream available', zoomReset: 'Zoom reset', qualityExcellent: 'Excellent', qualityGood: 'Good', qualityFair: 'Fair', qualityPoor: 'Poor', welcomeTitle: 'Welcome to KitaShare', welcomeSubtitle: 'Enter your nickname to join the session', nicknamePlaceholder: 'Your nickname...', joinSession: 'Join Session', changeNickname: 'Change Nickname', confirmRaiseHand: 'Raise your hand?', confirmRaiseHandDesc: 'This will notify the host that you have a question or comment.', confirmRaiseHandBtn: 'Raise Hand', confirmSnapshot: 'Take a snapshot?', confirmSnapshotDesc: 'This will download a screenshot of the current screen.', confirmSnapshotBtn: 'Take Snapshot', cancel: 'Cancel', confirm: 'Confirm', meme: 'Meme', quote: 'Quote', pickMeme: 'Pick a Meme', pickQuote: 'Pick a Quote', search: 'Search...', remaining: 'remaining', round: 'Round', you: 'You', host: 'Host', youRaisedHand: 'You raised your hand', raisedHandMsg: '{user} raised their hand', raisedHandToast: '{user} raised their hand!', newNicknameSubtitle: 'Enter your new nickname', nicknameChanged: 'Nickname changed successfully', nicknameUnchanged: 'Nickname remains the same, no change', renameMsg: '{old} is now known as {new}', exportChat: 'Export Chat', exportCsv: 'Export to CSV', system: 'System', filesSharedNotif: 'Host shared new files!', fileSharedMsg: '{user} shared files: {files}' },
-    id: { connecting: 'Menghubungkan ke host...', disconnected: 'Terputus', connected: 'Terhubung', waitingHost: 'Menunggu host memulai...', streamEnded: 'Siaran telah berakhir', hostPaused: 'Host menjeda berbagi. Menunggu sambungan ulang...', reconnecting: 'Menghubungkan ulang...', typeMsg: 'Ketik pesan...', send: 'Kirim', fullscreen: 'Layar Penuh', rotate: 'Putar', landscapeMode: 'Mode Lanskap', normalMode: 'Mode Normal', raiseHand: 'Angkat Tangan', snapshot: 'Tangkap Layar', files: 'Berkas', sharedFiles: 'Berkas yang Dibagikan', accessibility: 'Aksesibilitas', highContrast: 'Kontras Tinggi', largeText: 'Teks Besar', visualNotif: 'Notifikasi Visual', snapshotSaved: 'Tangkapan layar disimpan', chatEmpty: 'Belum ada pesan. Mulai percakapan!', chat: 'Obrolan', noFiles: 'Belum ada berkas yang dibagikan host.', loadingFiles: 'Memuat berkas...', loadFilesFailed: 'Gagal memuat berkas.', noStream: 'Tidak ada siaran', zoomReset: 'Zoom direset', qualityExcellent: 'Sangat Baik', qualityGood: 'Baik', qualityFair: 'Cukup', qualityPoor: 'Buruk', welcomeTitle: 'Selamat datang di KitaShare', welcomeSubtitle: 'Masukkan nama panggilan untuk bergabung', nicknamePlaceholder: 'Nama panggilan Anda...', joinSession: 'Gabung Sesi', changeNickname: 'Ganti Nama', confirmRaiseHand: 'Angkat tangan Anda?', confirmRaiseHandDesc: 'Ini akan memberi tahu host bahwa Anda memiliki pertanyaan atau komentar.', confirmRaiseHandBtn: 'Angkat Tangan', confirmSnapshot: 'Ambil tangkapan layar?', confirmSnapshotDesc: 'Ini akan mengunduh screenshot layar saat ini.', confirmSnapshotBtn: 'Ambil Tangkapan', cancel: 'Batal', confirm: 'Konfirmasi', meme: 'Meme', quote: 'Kutipan', pickMeme: 'Pilih Meme', pickQuote: 'Pilih Kutipan', search: 'Cari...', remaining: 'tersisa', round: 'Ronde', you: 'Anda', host: 'Host', youRaisedHand: 'Anda mengangkat tangan', raisedHandMsg: '{user} mengangkat tangan', raisedHandToast: '{user} mengangkat tangan!', newNicknameSubtitle: 'Masukkan nama panggilan baru Anda', nicknameChanged: 'Nama panggilan berhasil diubah', nicknameUnchanged: 'Nama panggilan tetap sama, tidak ada perubahan', renameMsg: '{old} sekarang dikenal sebagai {new}', exportChat: 'Ekspor Obrolan', exportCsv: 'Ekspor ke CSV', system: 'Sistem', filesSharedNotif: 'Host membagikan berkas baru!', fileSharedMsg: '{user} membagikan berkas: {files}' },
-    ar: { connecting: 'جارٍ الاتصال بالمضيف...', disconnected: 'غير متصل', connected: 'متصل', waitingHost: 'في انتظار بدء المضيف...', streamEnded: 'انتهى البث', hostPaused: 'أوقف المضيف المشاركة. في انتظار إعادة الاتصال...', reconnecting: 'إعادة الاتصال...', typeMsg: 'اكتب رسالة...', send: 'إرسال', fullscreen: 'ملء الشاشة', rotate: 'تدوير', landscapeMode: 'وضع أفقي', normalMode: 'وضع عادي', raiseHand: 'رفع اليد', snapshot: 'لقطة شاشة', files: 'ملفات', sharedFiles: 'الملفات المشتركة', accessibility: 'إمكانية الوصول', highContrast: 'تباين عالي', largeText: 'نص كبير', visualNotif: 'إشعارات مرئية', snapshotSaved: 'تم حفظ لقطة الشاشة', chatEmpty: 'لا توجد رسائل بعد. ابدأ المحادثة!', chat: 'دردشة', noFiles: 'لا توجد ملفات مشتركة بعد.', loadingFiles: 'جارٍ تحميل الملفات...', loadFilesFailed: 'فشل تحميل الملفات.', noStream: 'لا يوجد بث متاح', zoomReset: 'إعادة تعيين التكبير', qualityExcellent: 'ممتاز', qualityGood: 'جيد', qualityFair: 'مقبول', qualityPoor: 'ضعيف', welcomeTitle: 'مرحباً بك في KitaShare', welcomeSubtitle: 'أدخل اسمك للانضمام إلى الجلسة', nicknamePlaceholder: 'اسمك...', joinSession: 'انضمام للجلسة', changeNickname: 'تغيير الاسم', confirmRaiseHand: 'رفع يدك؟', confirmRaiseHandDesc: 'سيؤدي هذا إلى إخطار المضيف بأن لديك سؤالاً أو تعليقاً.', confirmRaiseHandBtn: 'رفع اليد', confirmSnapshot: 'التقاط لقطة شاشة؟', confirmSnapshotDesc: 'سيؤدي هذا إلى تنزيل لقطة شاشة للشاشة الحالية.', confirmSnapshotBtn: 'التقاط لقطة', cancel: 'إلغاء', confirm: 'تأكيد', meme: 'ميم', quote: 'اقتباس', pickMeme: 'اختر ميم', pickQuote: 'اختر اقتباس', search: 'بحث...', remaining: 'متبقي', round: 'جولة', you: 'أنت', host: 'المضيف', youRaisedHand: 'لقد رفعت يدك', raisedHandMsg: '{user} رفع يده', raisedHandToast: '{user} رفع يده!', newNicknameSubtitle: 'أدخل اسمك الجديد', nicknameChanged: 'تم تغيير الاسم بنجاح', nicknameUnchanged: 'الاسم لم يتغير، لا يوجد تغيير', renameMsg: '{old} أصبح يُعرف باسم {new}', exportChat: 'تصدير الدردشة', exportCsv: 'تصدير إلى CSV', system: 'النظام', filesSharedNotif: 'المضيف شارك ملفات جديدة!', fileSharedMsg: '{user} شارك ملفات: {files}' }
+    en: { connecting: 'Connecting to host...', disconnected: 'Disconnected', connected: 'Connected', waitingHost: 'Waiting for host to start...', streamEnded: 'Stream has ended', hostPaused: 'Host paused sharing. Waiting for reconnect...', reconnectBtn: 'Reconnect Now', reconnecting: 'Reconnecting...', typeMsg: 'Type a message...', send: 'Send', fullscreen: 'Fullscreen', rotate: 'Rotate', landscapeMode: 'Landscape mode', normalMode: 'Normal mode', raiseHand: 'Raise Hand', snapshot: 'Snapshot', files: 'Files', sharedFiles: 'Shared Files', accessibility: 'Accessibility', highContrast: 'High Contrast', largeText: 'Large Text', visualNotif: 'Visual Notifications', snapshotSaved: 'Snapshot saved', chatEmpty: 'No messages yet. Start the conversation!', chat: 'Chat', noFiles: 'No files shared by host yet.', loadingFiles: 'Loading files...', loadFilesFailed: 'Failed to load files.', noStream: 'No stream available', zoomReset: 'Zoom reset', qualityExcellent: 'Excellent', qualityGood: 'Good', qualityFair: 'Fair', qualityPoor: 'Poor', welcomeTitle: 'Welcome to KitaShare', welcomeSubtitle: 'Enter your nickname to join the session', nicknamePlaceholder: 'Your nickname...', joinSession: 'Join Session', changeNickname: 'Change Nickname', confirmRaiseHand: 'Raise your hand?', confirmRaiseHandDesc: 'This will notify the host that you have a question or comment.', confirmRaiseHandBtn: 'Raise Hand', confirmSnapshot: 'Take a snapshot?', confirmSnapshotDesc: 'This will download a screenshot of the current screen.', confirmSnapshotBtn: 'Take Snapshot', cancel: 'Cancel', confirm: 'Confirm', meme: 'Meme', quote: 'Quote', pickMeme: 'Pick a Meme', pickQuote: 'Pick a Quote', search: 'Search...', remaining: 'remaining', round: 'Round', you: 'You', host: 'Host', youRaisedHand: 'You raised your hand', raisedHandMsg: '{user} raised their hand', raisedHandToast: '{user} raised their hand!', newNicknameSubtitle: 'Enter your new nickname', nicknameChanged: 'Nickname changed successfully', nicknameUnchanged: 'Nickname remains the same, no change', renameMsg: '{old} is now known as {new}', exportChat: 'Export Chat', exportCsv: 'Export to CSV', system: 'System', filesSharedNotif: 'Host shared new files!', fileSharedMsg: '{user} shared files: {files}' },
+    id: { connecting: 'Menghubungkan ke host...', disconnected: 'Terputus', connected: 'Terhubung', waitingHost: 'Menunggu host memulai...', streamEnded: 'Siaran telah berakhir', hostPaused: 'Host menjeda berbagi. Menunggu sambungan ulang...', reconnectBtn: 'Sambung Ulang Sekarang', reconnecting: 'Menghubungkan ulang...', typeMsg: 'Ketik pesan...', send: 'Kirim', fullscreen: 'Layar Penuh', rotate: 'Putar', landscapeMode: 'Mode Lanskap', normalMode: 'Mode Normal', raiseHand: 'Angkat Tangan', snapshot: 'Tangkap Layar', files: 'Berkas', sharedFiles: 'Berkas yang Dibagikan', accessibility: 'Aksesibilitas', highContrast: 'Kontras Tinggi', largeText: 'Teks Besar', visualNotif: 'Notifikasi Visual', snapshotSaved: 'Tangkapan layar disimpan', chatEmpty: 'Belum ada pesan. Mulai percakapan!', chat: 'Obrolan', noFiles: 'Belum ada berkas yang dibagikan host.', loadingFiles: 'Memuat berkas...', loadFilesFailed: 'Gagal memuat berkas.', noStream: 'Tidak ada siaran', zoomReset: 'Zoom direset', qualityExcellent: 'Sangat Baik', qualityGood: 'Baik', qualityFair: 'Cukup', qualityPoor: 'Buruk', welcomeTitle: 'Selamat datang di KitaShare', welcomeSubtitle: 'Masukkan nama panggilan untuk bergabung', nicknamePlaceholder: 'Nama panggilan Anda...', joinSession: 'Gabung Sesi', changeNickname: 'Ganti Nama', confirmRaiseHand: 'Angkat tangan Anda?', confirmRaiseHandDesc: 'Ini akan memberi tahu host bahwa Anda memiliki pertanyaan atau komentar.', confirmRaiseHandBtn: 'Angkat Tangan', confirmSnapshot: 'Ambil tangkapan layar?', confirmSnapshotDesc: 'Ini akan mengunduh screenshot layar saat ini.', confirmSnapshotBtn: 'Ambil Tangkapan', cancel: 'Batal', confirm: 'Konfirmasi', meme: 'Meme', quote: 'Kutipan', pickMeme: 'Pilih Meme', pickQuote: 'Pilih Kutipan', search: 'Cari...', remaining: 'tersisa', round: 'Ronde', you: 'Anda', host: 'Host', youRaisedHand: 'Anda mengangkat tangan', raisedHandMsg: '{user} mengangkat tangan', raisedHandToast: '{user} mengangkat tangan!', newNicknameSubtitle: 'Masukkan nama panggilan baru Anda', nicknameChanged: 'Nama panggilan berhasil diubah', nicknameUnchanged: 'Nama panggilan tetap sama, tidak ada perubahan', renameMsg: '{old} sekarang dikenal sebagai {new}', exportChat: 'Ekspor Obrolan', exportCsv: 'Ekspor ke CSV', system: 'Sistem', filesSharedNotif: 'Host membagikan berkas baru!', fileSharedMsg: '{user} membagikan berkas: {files}' },
+    ar: { connecting: 'جارٍ الاتصال بالمضيف...', disconnected: 'غير متصل', connected: 'متصل', waitingHost: 'في انتظار بدء المضيف...', streamEnded: 'انتهى البث', hostPaused: 'أوقف المضيف المشاركة. في انتظار إعادة الاتصال...', reconnectBtn: 'إعادة الاتصال الآن', reconnecting: 'إعادة الاتصال...', typeMsg: 'اكتب رسالة...', send: 'إرسال', fullscreen: 'ملء الشاشة', rotate: 'تدوير', landscapeMode: 'وضع أفقي', normalMode: 'وضع عادي', raiseHand: 'رفع اليد', snapshot: 'لقطة شاشة', files: 'ملفات', sharedFiles: 'الملفات المشتركة', accessibility: 'إمكانية الوصول', highContrast: 'تباين عالي', largeText: 'نص كبير', visualNotif: 'إشعارات مرئية', snapshotSaved: 'تم حفظ لقطة الشاشة', chatEmpty: 'لا توجد رسائل بعد. ابدأ المحادثة!', chat: 'دردشة', noFiles: 'لا توجد ملفات مشتركة بعد.', loadingFiles: 'جارٍ تحميل الملفات...', loadFilesFailed: 'فشل تحميل الملفات.', noStream: 'لا يوجد بث متاح', zoomReset: 'إعادة تعيين التكبير', qualityExcellent: 'ممتاز', qualityGood: 'جيد', qualityFair: 'مقبول', qualityPoor: 'ضعيف', welcomeTitle: 'مرحباً بك في KitaShare', welcomeSubtitle: 'أدخل اسمك للانضمام إلى الجلسة', nicknamePlaceholder: 'اسمك...', joinSession: 'انضمام للجلسة', changeNickname: 'تغيير الاسم', confirmRaiseHand: 'رفع يدك؟', confirmRaiseHandDesc: 'سيؤدي هذا إلى إخطار المضيف بأن لديك سؤالاً أو تعليقاً.', confirmRaiseHandBtn: 'رفع اليد', confirmSnapshot: 'التقاط لقطة شاشة؟', confirmSnapshotDesc: 'سيؤدي هذا إلى تنزيل لقطة شاشة للشاشة الحالية.', confirmSnapshotBtn: 'التقاط لقطة', cancel: 'إلغاء', confirm: 'تأكيد', meme: 'ميم', quote: 'اقتباس', pickMeme: 'اختر ميم', pickQuote: 'اختر اقتباس', search: 'بحث...', remaining: 'متبقي', round: 'جولة', you: 'أنت', host: 'المضيف', youRaisedHand: 'لقد رفعت يدك', raisedHandMsg: '{user} رفع يده', raisedHandToast: '{user} رفع يده!', newNicknameSubtitle: 'أدخل اسمك الجديد', nicknameChanged: 'تم تغيير الاسم بنجاح', nicknameUnchanged: 'الاسم لم يتغير، لا يوجد تغيير', renameMsg: '{old} أصبح يُعرف باسم {new}', exportChat: 'تصدير الدردشة', exportCsv: 'تصدير إلى CSV', system: 'النظام', filesSharedNotif: 'المضيف شارك ملفات جديدة!', fileSharedMsg: '{user} شارك ملفات: {files}' }
   };
   let lang = localStorage.getItem('kitashare-lang') || (navigator.language || 'en').split('-')[0];
   if (!translations[lang]) lang = 'en';
@@ -1333,6 +1335,7 @@ body.immersive .immersive-exit { display: flex; }
       connected = true;
       setStatus('connected');
       loadingOverlay.classList.add('hidden');
+      reconnectBtn.style.display = 'none';
       chatSend.disabled = false;
       if (visualNotify) flashScreen('rgba(59,130,246,0.3)');
     };
@@ -1350,6 +1353,8 @@ body.immersive .immersive-exit { display: flex; }
       chatSend.disabled = true;
       loadingText.textContent = t('reconnecting');
       loadingOverlay.classList.remove('hidden');
+      reconnectBtn.textContent = t('reconnectBtn');
+      reconnectBtn.style.display = '';
       qualityBars.style.display = 'none';
       fpsText.style.display = 'none';
       eventSource.close();
@@ -1360,6 +1365,7 @@ body.immersive .immersive-exit { display: flex; }
           stopPolling();
           setStatus('disconnected');
           loadingText.textContent = t('streamEnded');
+          reconnectBtn.style.display = 'none';
           return;
         }
         // Check if session is paused
@@ -1380,6 +1386,14 @@ body.immersive .immersive-exit { display: flex; }
       });
     };
   }
+
+  reconnectBtn.onclick = function() {
+    reconnectBtn.style.display = 'none';
+    loadingText.textContent = t('connecting');
+    if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+    reconnectDelay = 1000;
+    connect();
+  };
 
   function handleSSEMessage(msg) {
     switch(msg.type) {
@@ -1444,9 +1458,12 @@ body.immersive .immersive-exit { display: flex; }
         if (msg.messages) {
           msg.messages.forEach(function(m) {
             if (m.subtype === 'rename') return;
-            if (m.subtype === 'raise_hand') return;
             var isSelf = (m.user === viewerNickname);
-            addChatMessage(m.user, m.text, m.timestamp, isSelf, m.subtype || '');
+            if (m.subtype === 'raise_hand') {
+              addRaiseHandMessage(m.user, m.timestamp);
+            } else {
+              addChatMessage(m.user, m.text, m.timestamp, isSelf, m.subtype || '');
+            }
           });
         }
         break;
@@ -1468,6 +1485,8 @@ body.immersive .immersive-exit { display: flex; }
         chatSend.disabled = true;
         loadingText.textContent = t('hostPaused');
         loadingOverlay.classList.remove('hidden');
+        reconnectBtn.textContent = t('reconnectBtn');
+        reconnectBtn.style.display = '';
         qualityBars.style.display = 'none';
         fpsText.style.display = 'none';
         if (eventSource) { eventSource.close(); eventSource = null; }
@@ -1478,6 +1497,7 @@ body.immersive .immersive-exit { display: flex; }
         setStatus('connected');
         chatSend.disabled = false;
         loadingOverlay.classList.add('hidden');
+        reconnectBtn.style.display = 'none';
         // Reconnect SSE to get new frames
         if (eventSource) { eventSource.close(); eventSource = null; }
         reconnectDelay = 1000;
@@ -1489,6 +1509,7 @@ body.immersive .immersive-exit { display: flex; }
         chatSend.disabled = true;
         loadingText.textContent = t('streamEnded');
         loadingOverlay.classList.remove('hidden');
+        reconnectBtn.style.display = 'none';
         qualityBars.style.display = 'none';
         fpsText.style.display = 'none';
         if (eventSource) { eventSource.close(); eventSource = null; }
