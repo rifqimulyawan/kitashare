@@ -178,6 +178,7 @@ input { font-family: inherit; }
   backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
 }
 .loading-overlay.hidden { opacity: 0; pointer-events: none; }
+.loading-overlay p { text-align: center; max-width: 90%; padding: 0 16px; word-wrap: break-word; }
 .spinner {
   width: 48px; height: 48px; border: 4px solid rgba(255,255,255,0.2);
   border-top-color: var(--primary); border-radius: 50%;
@@ -1296,7 +1297,11 @@ body.immersive .immersive-exit { display: flex; }
 
     ws.onerror = function() {
       connected = false;
-      setStatus('disconnected');
+      setStatus('connecting');
+    };
+
+    ws.onunexpectedresponse = function() {
+      setTimeout(connect, 2000);
     };
   }
 
