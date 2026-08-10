@@ -334,15 +334,19 @@ export function getFileContent(sessionId: string, fileId: number): Buffer | null
   return session.fileContents.get(fileId) || null;
 }
 
-// Auto-expire sessions
+// Auto-expire sessions and auto-pause stale sessions
+const FRAME_TIMEOUT_MS = 15_000; // 15 seconds without frames = host disconnected
 setInterval(() => {
   const now = Date.now();
   for (const [sessionId, session] of SESSIONS) {
     if (now - session.lastActivity > SESSION_TIMEOUT_MS) {
       cleanupSession(sessionId);
+    } else if (!session.paused && session.lastFrameTime > 0 && (now - session.lastFrameTime) > FRAME_TIMEOUT_MS) {
+      // Host stopped sending frames but didn't call stop — auto-pause
+      pauseSession(sessionId);
     }
   }
-}, 60_000).unref();
+}, 10_000).unref();
 
 export function getActiveSessionCount(): number {
   return SESSIONS.size;
