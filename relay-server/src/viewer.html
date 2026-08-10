@@ -1892,7 +1892,7 @@ body.immersive .immersive-exit { display: flex; }
   function loadQuotes() {
     if (quotesCache) { renderQuotes(''); return; }
     var langCode = lang.split('-')[0] || 'en';
-    fetch('quotes/quotes-' + langCode + '.json')
+    fetch('/quotes/quotes-' + langCode + '.json')
       .then(function(r) { return r.json(); })
       .then(function(data) {
         quotesCache = data;
