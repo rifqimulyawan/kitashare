@@ -190,10 +190,8 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
     // Send chat history
     if (session.chatHistory.length > 0) {
       const recent = session.chatHistory.slice(-50);
-      for (const msg of recent) {
-        const chatPayload = `data: ${JSON.stringify({ type: 'chat', ...msg })}\n\n`;
-        res.write(chatPayload);
-      }
+      const historyPayload = `data: ${JSON.stringify({ type: 'chat_history', messages: recent })}\n\n`;
+      res.write(historyPayload);
     }
 
     // Send file list

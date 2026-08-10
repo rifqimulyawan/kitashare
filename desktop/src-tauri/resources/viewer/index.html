@@ -1371,7 +1371,8 @@ body.immersive .immersive-exit { display: flex; }
             msg.messages.forEach(function(m) {
               if (m.subtype === 'rename') return;
               if (m.subtype === 'raise_hand') return;
-              addChatMessage(m.user, m.text, m.timestamp, false, m.subtype || '');
+              var isSelf = (m.user === viewerNickname);
+              addChatMessage(m.user, m.text, m.timestamp, isSelf, m.subtype || '');
             });
           }
           break;

@@ -947,6 +947,21 @@ pub fn send_chat(state: State<ShareState>, text: String, subtype: Option<String>
             "subtype": subtype_str,
             "clientId": "__host__"
         });
+        // Store in chat history so viewers can see it after reload
+        {
+            let mut messages = ss.chat_messages.lock();
+            messages.push(server::ChatMessage {
+                user: host_name.clone(),
+                text: text.clone(),
+                timestamp,
+                subtype: subtype_str.clone(),
+                client_id: "__host__".to_string(),
+            });
+            if messages.len() > 200 {
+                let drain_to = messages.len() - 200;
+                messages.drain(0..drain_to);
+            }
+        }
         if let Ok(broadcast_str) = serde_json::to_string(&chat_msg) {
             let _ = ss.chat_tx.send(broadcast_str);
         }
