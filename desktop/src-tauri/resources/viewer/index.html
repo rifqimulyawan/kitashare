@@ -1080,6 +1080,7 @@ body.immersive .immersive-exit { display: flex; }
     var idx = langOrder.indexOf(lang);
     lang = langOrder[(idx + 1) % langOrder.length];
     localStorage.setItem('kitashare-lang', lang);
+    quotesCache = null;
     applyTranslations();
   });
 
@@ -1727,7 +1728,8 @@ body.immersive .immersive-exit { display: flex; }
 
   function loadQuotes() {
     if (quotesCache) { renderQuotes(''); return; }
-    fetch('https://raw.githubusercontent.com/JamesFT/Database-Quotes-JSON/master/quotes.json')
+    var langCode = lang.split('-')[0] || 'en';
+    fetch('quotes/quotes-' + langCode + '.json')
       .then(function(r) { return r.json(); })
       .then(function(data) {
         quotesCache = data;
@@ -1735,7 +1737,7 @@ body.immersive .immersive-exit { display: flex; }
         renderQuotes('');
       })
       .catch(function() {
-        pickerContent.innerHTML = '<div class="picker-loading">Failed to load quotes. Check your connection.</div>';
+        pickerContent.innerHTML = '<div class="picker-loading">' + escapeHtml(t('loadFilesFailed')) + '</div>';
       });
   }
 

@@ -134,6 +134,27 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
     return;
   }
 
+  // /quotes/:filename — serve quotes JSON files
+  if (parts.length === 2 && parts[0] === 'quotes' && method === 'GET') {
+    const filename = path.basename(parts[1]);
+    if (!/^quotes-(en|id|ar)\.json$/.test(filename)) {
+      sendError(res, 404, 'Not found');
+      return;
+    }
+    const filePath = path.join(__dirname, 'quotes', filename);
+    setSecurityHeaders(res);
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'public, max-age=86400' });
+    fs.readFile(filePath, (err, data) => {
+      if (err) {
+        res.writeHead(404);
+        res.end('{"error":"Not found"}');
+      } else {
+        res.end(data);
+      }
+    });
+    return;
+  }
+
   // /stream/:sessionId — SSE viewer stream
   if (parts.length === 2 && parts[0] === 'stream' && method === 'GET') {
     const sessionId = parts[1];

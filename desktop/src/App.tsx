@@ -59,7 +59,7 @@ import {
 } from "./lib/tauri-bridge";
 
 export default function App() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { isSharing, sessionInfo, error, setSharing, setError, updateClients } =
     useShareStore();
   const a11y = useAccessibilityStore();
@@ -315,7 +315,8 @@ export default function App() {
         }
         setPickerItems(memes);
       } else {
-        const res = await fetch("https://raw.githubusercontent.com/JamesFT/Database-Quotes-JSON/master/quotes.json");
+        const langCode = i18n.language?.split("-")[0] || "en";
+        const res = await fetch(`quotes/quotes-${langCode}.json`);
         const data = await res.json();
         const quotes = data.map((q: any) => ({ text: q.quoteText, author: q.quoteAuthor || "Unknown" }));
         for (let i = quotes.length - 1; i > 0; i--) {
@@ -328,7 +329,7 @@ export default function App() {
       setPickerItems([]);
     }
     setPickerLoading(false);
-  }, []);
+  }, [i18n.language]);
 
   const sendMeme = useCallback(async (url: string) => {
     setChatMessages((prev) => [...prev, { user: t("host.host"), text: url, timestamp: Date.now() / 1000, subtype: "meme", isSelf: true }]);
