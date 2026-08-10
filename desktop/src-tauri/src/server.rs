@@ -51,6 +51,13 @@ pub struct ServerState {
 #[cfg(not(debug_assertions))]
 pub static VIEWER_HTML: &str = include_str!("../resources/viewer/index.html");
 
+#[cfg(not(debug_assertions))]
+pub static QUOTES_EN: &[u8] = include_bytes!("../resources/viewer/quotes/quotes-en.json");
+#[cfg(not(debug_assertions))]
+pub static QUOTES_ID: &[u8] = include_bytes!("../resources/viewer/quotes/quotes-id.json");
+#[cfg(not(debug_assertions))]
+pub static QUOTES_AR: &[u8] = include_bytes!("../resources/viewer/quotes/quotes-ar.json");
+
 #[cfg(debug_assertions)]
 fn get_viewer_path() -> std::path::PathBuf {
     let mut path = std::env::current_dir().unwrap_or_default();
@@ -77,6 +84,7 @@ pub async fn start_server(port: u16, state: Arc<ServerState>) -> Result<tokio::t
         .route("/api/info", get(info_handler))
         .route("/api/files", get(files_handler))
         .route("/api/files/:id", get(file_download_handler))
+        .route("/quotes/:filename", get(quotes_handler))
         .with_state(state);
 
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", port))
@@ -95,6 +103,36 @@ pub async fn start_server(port: u16, state: Arc<ServerState>) -> Result<tokio::t
 #[cfg(not(debug_assertions))]
 async fn viewer_handler() -> Html<&'static str> {
     Html(VIEWER_HTML)
+}
+
+#[cfg(not(debug_assertions))]
+async fn quotes_handler(Path(filename): Path<String>) -> Response {
+    let data: &[u8] = match filename.as_str() {
+        "quotes-en.json" => QUOTES_EN,
+        "quotes-id.json" => QUOTES_ID,
+        "quotes-ar.json" => QUOTES_AR,
+        _ => return (axum::http::StatusCode::NOT_FOUND, "Not found").into_response(),
+    };
+    (
+        [(axum::http::header::CONTENT_TYPE, "application/json; charset=utf-8".to_string())],
+        data.to_vec(),
+    ).into_response()
+}
+
+#[cfg(debug_assertions)]
+async fn quotes_handler(Path(filename): Path<String>) -> Response {
+    if !filename.starts_with("quotes-") || !filename.ends_with(".json") {
+        return (axum::http::StatusCode::NOT_FOUND, "Not found").into_response();
+    }
+    let viewer_path = get_viewer_path();
+    let quotes_path = viewer_path.parent().unwrap().join("quotes").join(&filename);
+    match std::fs::read(&quotes_path) {
+        Ok(data) => (
+            [(axum::http::header::CONTENT_TYPE, "application/json; charset=utf-8".to_string())],
+            data,
+        ).into_response(),
+        Err(_) => (axum::http::StatusCode::NOT_FOUND, "Quotes file not found").into_response(),
+    }
 }
 
 #[cfg(debug_assertions)]

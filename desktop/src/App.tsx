@@ -898,44 +898,44 @@ export default function App() {
 
       {/* Meme/Quote Picker */}
       {showPicker && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowPicker(null)}>
-          <div className="relative flex h-[70vh] w-full max-w-lg flex-col rounded-2xl border border-border bg-card shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <div className="flex h-14 items-center justify-between border-b border-border px-4">
-              <span className="font-semibold">{showPicker === "meme" ? t("host.meme") : t("host.quote")}</span>
-              <Button variant="ghost" size="icon" onClick={() => setShowPicker(null)} aria-label={t("close")}>
-                <X className="h-5 w-5" />
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center" onClick={() => setShowPicker(null)}>
+          <div className="relative flex h-[75vh] w-full max-w-lg flex-col rounded-t-2xl border border-border bg-card shadow-xl sm:rounded-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex h-12 shrink-0 items-center justify-between border-b border-border px-4">
+              <span className="text-sm font-semibold">{showPicker === "meme" ? t("host.meme") : t("host.quote")}</span>
+              <Button variant="ghost" size="icon" onClick={() => setShowPicker(null)} aria-label={t("close")} className="h-7 w-7">
+                <X className="h-4 w-4" />
               </Button>
             </div>
             {showPicker === "quote" && (
-              <div className="border-b border-border p-3">
+              <div className="shrink-0 border-b border-border p-2">
                 <input
                   type="text"
                   value={pickerSearch}
                   onChange={(e) => setPickerSearch(e.target.value)}
-                  placeholder={t("host.typeMessage")}
-                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+                  placeholder={t("host.search")}
+                  className="w-full rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none focus:border-primary"
                 />
               </div>
             )}
-            <div className="flex-1 overflow-y-auto p-4">
+            <div className="flex-1 overflow-y-auto p-2">
               {pickerLoading ? (
                 <div className="flex h-full items-center justify-center">
                   <Spinner className="h-6 w-6" />
                 </div>
               ) : showPicker === "meme" ? (
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-4">
                   {pickerItems.map((item, i) => (
                     <button
                       key={i}
                       onClick={() => item.url && sendMeme(item.url)}
-                      className="overflow-hidden rounded-lg border border-border transition hover:border-primary"
+                      className="overflow-hidden rounded-md border border-border transition hover:border-primary"
                     >
                       <img src={item.url} alt="Meme" className="w-full" loading="lazy" />
                     </button>
                   ))}
                 </div>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-1">
                   {pickerItems
                     .filter((item) => {
                       if (!pickerSearch) return true;
@@ -947,10 +947,10 @@ export default function App() {
                       <button
                         key={i}
                         onClick={() => item.text && sendQuote(item.text, item.author || t("host.unknown"))}
-                        className="w-full rounded-lg border border-border p-3 text-left transition hover:border-primary"
+                        className="block w-full rounded-md border-l-2 border-border px-3 py-2 text-left transition hover:border-l-primary hover:bg-primary/5"
                       >
-                        <p className="text-sm italic">{item.text}</p>
-                        <p className="mt-1 text-xs text-muted-foreground">— {item.author}</p>
+                        <p className="line-clamp-2 text-xs italic leading-snug">{item.text}</p>
+                        <p className="mt-0.5 text-[10px] text-muted-foreground">— {item.author}</p>
                       </button>
                     ))}
                 </div>
