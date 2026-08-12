@@ -265,7 +265,7 @@ const resources = {
   },
 };
 
-const savedLang = localStorage.getItem("kitashare-lang") || "en";
+const savedLang = localStorage.getItem("kitashare-lang") || "id";
 
 i18n.use(initReactI18next).init({
   resources,
