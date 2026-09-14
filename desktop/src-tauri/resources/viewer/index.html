@@ -538,6 +538,22 @@ body.immersive .chat-panel.hidden { display: none; }
 .immersive-exit svg { width: 20px; height: 20px; }
 body.immersive .immersive-exit { display: flex; }
 
+/* Preview mode (host preview iframe) — show only canvas, hide all UI */
+body.preview-mode .topbar,
+body.preview-mode .controls-bar,
+body.preview-mode .kbd-hint,
+body.preview-mode .skip-link,
+body.preview-mode .immersive-exit,
+body.preview-mode .a11y-panel,
+body.preview-mode .a11y-fab,
+body.preview-mode .stream-status,
+body.preview-mode .chat-panel,
+body.preview-mode .chat-backdrop,
+body.preview-mode .raise-hand-btn { display: none !important; }
+body.preview-mode { background: #000; }
+body.preview-mode .main-area { padding: 0; }
+body.preview-mode .video-container { border-radius: 0; }
+
 /* Raise hand button */
 .raise-hand-btn {
   display: flex; align-items: center; justify-content: center;
@@ -2036,6 +2052,7 @@ body.immersive .immersive-exit { display: flex; }
   initTheme();
   var isPreviewMode = new URLSearchParams(location.search).get('preview') === '1';
   if (isPreviewMode) {
+    document.body.classList.add('preview-mode');
     viewerNickname = 'Host (Preview)';
     localStorage.setItem('kitashare-nickname', viewerNickname);
     fetchHostProfile();

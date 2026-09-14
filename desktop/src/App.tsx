@@ -28,6 +28,8 @@ import {
   Smile,
   Quote,
   Eye,
+  Maximize,
+  Minimize,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Button } from "./components/ui/Button";
@@ -95,10 +97,13 @@ export default function App() {
   const [isStarting, setIsStarting] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [previewPos, setPreviewPos] = useState<{ x: number; y: number } | null>(null);
+  const [previewSize, setPreviewSize] = useState({ w: 400, h: 300 });
+  const [isPreviewFullscreen, setIsPreviewFullscreen] = useState(false);
   const previewDragRef = useRef<{ startX: number; startY: number; elemX: number; elemY: number } | null>(null);
+  const previewResizeRef = useRef<{ startX: number; startY: number; startW: number; startH: number } | null>(null);
   const previewRef = useRef<HTMLDivElement>(null);
-  const PREVIEW_W = 400;
-  const PREVIEW_H = 300;
+  const MIN_PREVIEW_W = 240;
+  const MIN_PREVIEW_H = 160;
 
   useEffect(() => {
     getAvailableDisplays()
@@ -238,16 +243,53 @@ export default function App() {
     };
   }, []);
 
+  const onPreviewResizeStart = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    e.stopPropagation();
+    const point = "touches" in e ? e.touches[0] : e;
+    previewResizeRef.current = {
+      startX: point.clientX,
+      startY: point.clientY,
+      startW: previewSize.w,
+      startH: previewSize.h,
+    };
+  }, [previewSize]);
+
+  const togglePreviewFullscreen = useCallback(() => {
+    const panel = previewRef.current;
+    if (!panel) return;
+    if (!document.fullscreenElement) {
+      panel.requestFullscreen?.().then(() => setIsPreviewFullscreen(true)).catch(() => {});
+    } else {
+      document.exitFullscreen?.().then(() => setIsPreviewFullscreen(false)).catch(() => {});
+    }
+  }, []);
+
+  useEffect(() => {
+    const handleChange = () => {
+      if (!document.fullscreenElement) setIsPreviewFullscreen(false);
+    };
+    document.addEventListener("fullscreenchange", handleChange);
+    return () => document.removeEventListener("fullscreenchange", handleChange);
+  }, []);
+
   useEffect(() => {
     if (!showPreview) return;
     const handleMove = (clientX: number, clientY: number) => {
       const d = previewDragRef.current;
-      if (!d) return;
-      const dx = clientX - d.startX;
-      const dy = clientY - d.startY;
-      const newX = Math.max(4, Math.min(d.elemX + dx, window.innerWidth - PREVIEW_W - 4));
-      const newY = Math.max(60, Math.min(d.elemY + dy, window.innerHeight - 60));
-      setPreviewPos({ x: newX, y: newY });
+      const r = previewResizeRef.current;
+      if (d) {
+        const dx = clientX - d.startX;
+        const dy = clientY - d.startY;
+        const newX = Math.max(4, Math.min(d.elemX + dx, window.innerWidth - previewSize.w - 4));
+        const newY = Math.max(60, Math.min(d.elemY + dy, window.innerHeight - 60));
+        setPreviewPos({ x: newX, y: newY });
+      } else if (r) {
+        const dx = clientX - r.startX;
+        const dy = clientY - r.startY;
+        const newW = Math.max(MIN_PREVIEW_W, Math.min(r.startW + dx, window.innerWidth - 20));
+        const newH = Math.max(MIN_PREVIEW_H, Math.min(r.startH + dy, window.innerHeight - 60));
+        setPreviewSize({ w: newW, h: newH });
+      }
     };
     const handleMouseMove = (e: MouseEvent) => handleMove(e.clientX, e.clientY);
     const handleTouchMove = (e: TouchEvent) => {
@@ -256,7 +298,10 @@ export default function App() {
         handleMove(e.touches[0].clientX, e.touches[0].clientY);
       }
     };
-    const handleEnd = () => { previewDragRef.current = null; };
+    const handleEnd = () => {
+      previewDragRef.current = null;
+      previewResizeRef.current = null;
+    };
     document.addEventListener("mousemove", handleMouseMove);
     document.addEventListener("touchmove", handleTouchMove, { passive: false });
     document.addEventListener("mouseup", handleEnd);
@@ -267,7 +312,7 @@ export default function App() {
       document.removeEventListener("mouseup", handleEnd);
       document.removeEventListener("touchend", handleEnd);
     };
-  }, [showPreview]);
+  }, [showPreview, previewSize.w, previewSize.h]);
 
   const handleCopy = useCallback(() => {
     if (!sessionInfo) return;
@@ -343,6 +388,8 @@ export default function App() {
       setShowFiles(false);
       setShowPreview(false);
       setPreviewPos(null);
+      setPreviewSize({ w: 400, h: 300 });
+      if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
     }
   }, [isSharing]);
 
@@ -1352,18 +1399,22 @@ export default function App() {
         </div>
       )}
 
-      {/* Viewer Preview Panel (draggable floating iframe) */}
+      {/* Viewer Preview Panel (draggable + resizable floating iframe) */}
       {showPreview && isSharing && sessionInfo && (
         <div
           ref={previewRef}
           className="fixed z-[60] flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl"
-          style={{
-            width: PREVIEW_W,
-            height: PREVIEW_H,
-            ...(previewPos
-              ? { left: previewPos.x, top: previewPos.y }
-              : { right: 16, bottom: 16 }),
-          }}
+          style={
+            isPreviewFullscreen
+              ? { width: "100vw", height: "100vh" }
+              : {
+                  width: previewSize.w,
+                  height: previewSize.h,
+                  ...(previewPos
+                    ? { left: previewPos.x, top: previewPos.y }
+                    : { right: 16, bottom: 16 }),
+                }
+          }
         >
           <div
             className="flex h-10 cursor-move items-center justify-between border-b border-border bg-muted/50 px-3 select-none"
@@ -1374,13 +1425,23 @@ export default function App() {
               <Eye className="h-4 w-4 text-primary" />
               <span className="text-sm font-semibold">{t("host.previewTitle")}</span>
             </div>
-            <button
-              className="rounded-lg p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
-              onClick={() => setShowPreview(false)}
-              aria-label={t("close")}
-            >
-              <X className="h-4 w-4" />
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                className="rounded-lg p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+                onClick={togglePreviewFullscreen}
+                aria-label={t("host.fullscreenQr")}
+                title={t("host.fullscreenQr")}
+              >
+                {isPreviewFullscreen ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
+              </button>
+              <button
+                className="rounded-lg p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+                onClick={() => setShowPreview(false)}
+                aria-label={t("close")}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
           </div>
           <div className="relative flex-1 bg-black">
             <iframe
@@ -1389,6 +1450,17 @@ export default function App() {
               title={t("host.previewTitle")}
             />
           </div>
+          {!isPreviewFullscreen && (
+            <div
+              className="absolute bottom-0 right-0 z-10 h-4 w-4 cursor-nwse-resize"
+              onMouseDown={onPreviewResizeStart}
+              onTouchStart={onPreviewResizeStart}
+            >
+              <svg viewBox="0 0 10 10" className="h-full w-full text-muted-foreground/50">
+                <path d="M9 1 L1 9 M9 5 L5 9" stroke="currentColor" strokeWidth="1.5" fill="none" />
+              </svg>
+            </div>
+          )}
         </div>
       )}
 
