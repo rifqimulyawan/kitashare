@@ -157,7 +157,8 @@ export function setCorsHeaders(res: import('http').ServerResponse): void {
 // --- Security headers ---
 export function setSecurityHeaders(res: import('http').ServerResponse): void {
   res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Referrer-Policy', 'no-referrer');
-  res.setHeader('Content-Security-Policy', "default-src 'self'; img-src 'self' data: blob: https:; media-src 'self' blob:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self'; font-src 'self' data:;");
+  // Allow iframe embedding from host app (Tauri: tauri://localhost, http://tauri.localhost)
+  // and self. Viewer page is public content (screen stream), not sensitive UI.
+  res.setHeader('Content-Security-Policy', "default-src 'self'; img-src 'self' data: blob: https:; media-src 'self' blob:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self'; font-src 'self' data:; frame-ancestors 'self' tauri: http://tauri.localhost http://localhost:5174;");
 }
