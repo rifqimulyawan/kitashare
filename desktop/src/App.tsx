@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Monitor,
@@ -27,6 +27,7 @@ import {
   Upload,
   Smile,
   Quote,
+  Eye,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Button } from "./components/ui/Button";
@@ -92,6 +93,12 @@ export default function App() {
   const [shareMode, setShareMode] = useState<"lan" | "internet">("lan");
   const [relayUrl, setRelayUrl] = useState(localStorage.getItem("kitashare-relay-url") || "https://kitashare.rmdigital.co.id");
   const [isStarting, setIsStarting] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewPos, setPreviewPos] = useState<{ x: number; y: number } | null>(null);
+  const previewDragRef = useRef<{ startX: number; startY: number; elemX: number; elemY: number } | null>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
+  const PREVIEW_W = 400;
+  const PREVIEW_H = 300;
 
   useEffect(() => {
     getAvailableDisplays()
@@ -210,6 +217,58 @@ export default function App() {
     }
   }, [setSharing, setError]);
 
+  const previewUrl = useMemo(() => {
+    if (!sessionInfo) return "";
+    if (sessionInfo.internetUrl) {
+      return `${sessionInfo.internetUrl}?preview=1`;
+    }
+    return `http://localhost:${sessionInfo.port || port}/?preview=1`;
+  }, [sessionInfo, port]);
+
+  const onPreviewDragStart = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    const panel = previewRef.current;
+    if (!panel) return;
+    const rect = panel.getBoundingClientRect();
+    const point = "touches" in e ? e.touches[0] : e;
+    previewDragRef.current = {
+      startX: point.clientX,
+      startY: point.clientY,
+      elemX: rect.left,
+      elemY: rect.top,
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!showPreview) return;
+    const handleMove = (clientX: number, clientY: number) => {
+      const d = previewDragRef.current;
+      if (!d) return;
+      const dx = clientX - d.startX;
+      const dy = clientY - d.startY;
+      const newX = Math.max(4, Math.min(d.elemX + dx, window.innerWidth - PREVIEW_W - 4));
+      const newY = Math.max(60, Math.min(d.elemY + dy, window.innerHeight - 60));
+      setPreviewPos({ x: newX, y: newY });
+    };
+    const handleMouseMove = (e: MouseEvent) => handleMove(e.clientX, e.clientY);
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length > 0) {
+        e.preventDefault();
+        handleMove(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    };
+    const handleEnd = () => { previewDragRef.current = null; };
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("touchmove", handleTouchMove, { passive: false });
+    document.addEventListener("mouseup", handleEnd);
+    document.addEventListener("touchend", handleEnd);
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("touchmove", handleTouchMove);
+      document.removeEventListener("mouseup", handleEnd);
+      document.removeEventListener("touchend", handleEnd);
+    };
+  }, [showPreview]);
+
   const handleCopy = useCallback(() => {
     if (!sessionInfo) return;
     const url = sessionInfo.internetUrl || sessionInfo.url;
@@ -282,6 +341,8 @@ export default function App() {
       setChatMessages([]);
       setShowChat(false);
       setShowFiles(false);
+      setShowPreview(false);
+      setPreviewPos(null);
     }
   }, [isSharing]);
 
@@ -395,6 +456,18 @@ export default function App() {
                   {chatMessages.length > 99 ? "99+" : chatMessages.length}
                 </span>
               )}
+            </Button>
+          )}
+          {isSharing && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowPreview(!showPreview)}
+              aria-label={t("host.preview")}
+              title={t("host.preview")}
+              className={showPreview ? "bg-primary/10" : ""}
+            >
+              <Eye className="h-5 w-5" />
             </Button>
           )}
           <LanguageSwitcher />
@@ -1276,6 +1349,46 @@ export default function App() {
               </div>
             </CardContent>
           </Card>
+        </div>
+      )}
+
+      {/* Viewer Preview Panel (draggable floating iframe) */}
+      {showPreview && isSharing && sessionInfo && (
+        <div
+          ref={previewRef}
+          className="fixed z-[60] flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-2xl"
+          style={{
+            width: PREVIEW_W,
+            height: PREVIEW_H,
+            ...(previewPos
+              ? { left: previewPos.x, top: previewPos.y }
+              : { right: 16, bottom: 16 }),
+          }}
+        >
+          <div
+            className="flex h-10 cursor-move items-center justify-between border-b border-border bg-muted/50 px-3 select-none"
+            onMouseDown={onPreviewDragStart}
+            onTouchStart={onPreviewDragStart}
+          >
+            <div className="flex items-center gap-2">
+              <Eye className="h-4 w-4 text-primary" />
+              <span className="text-sm font-semibold">{t("host.previewTitle")}</span>
+            </div>
+            <button
+              className="rounded-lg p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+              onClick={() => setShowPreview(false)}
+              aria-label={t("close")}
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="relative flex-1 bg-black">
+            <iframe
+              src={previewUrl}
+              className="h-full w-full border-0"
+              title={t("host.previewTitle")}
+            />
+          </div>
         </div>
       )}
 

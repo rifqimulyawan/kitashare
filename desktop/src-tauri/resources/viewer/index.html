@@ -2034,7 +2034,15 @@ body.immersive .immersive-exit { display: flex; }
   // Init
   applyTranslations();
   initTheme();
-  showNicknameModal();
+  var isPreviewMode = new URLSearchParams(location.search).get('preview') === '1';
+  if (isPreviewMode) {
+    viewerNickname = 'Host (Preview)';
+    localStorage.setItem('kitashare-nickname', viewerNickname);
+    fetchHostProfile();
+    connect();
+  } else {
+    showNicknameModal();
+  }
 })();
 </script>
 </body>

@@ -64,6 +64,9 @@ const resources = {
         lan: "LAN",
         internet: "Internet",
         relayServerUrl: "Relay Server URL",
+        preview: "Preview",
+        previewTitle: "Viewer Preview",
+        previewDragHint: "Drag to move",
       },
       settings: {
         title: "Settings",
@@ -151,6 +154,9 @@ const resources = {
         lan: "LAN",
         internet: "Internet",
         relayServerUrl: "URL Server Relay",
+        preview: "Pratinjau",
+        previewTitle: "Pratinjau Penonton",
+        previewDragHint: "Seret untuk memindahkan",
       },
       settings: {
         title: "Pengaturan",
@@ -238,6 +244,9 @@ const resources = {
         lan: "شبكة محلية",
         internet: "إنترنت",
         relayServerUrl: "رابط خادم الترحيل",
+        preview: "معاينة",
+        previewTitle: "معاينة المشاهد",
+        previewDragHint: "اسحب للتحريك",
       },
       settings: {
         title: "الإعدادات",
