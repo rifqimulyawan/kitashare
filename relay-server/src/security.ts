@@ -4,6 +4,8 @@
  */
 
 import crypto from 'crypto';
+import fs from 'fs';
+import path from 'path';
 
 // --- Session ID validation ---
 const SESSION_ID_REGEX = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
@@ -13,8 +15,36 @@ export function isValidSessionId(id: string): boolean {
 }
 
 // --- Publisher token validation ---
-// Token = HMAC-SHA256(sessionId + secret, timestamp) — publisher must send this
-const PUBLISHER_SECRET = process.env.KITASHARE_RELAY_SECRET || crypto.randomBytes(32).toString('hex');
+// Token = HMAC-SHA256(sessionId, secret) — publisher must send this
+// Load secret from env var, or fall back to secret.json next to entry point
+function loadPublisherSecret(): string {
+  if (process.env.KITASHARE_RELAY_SECRET) {
+    return process.env.KITASHARE_RELAY_SECRET;
+  }
+  // Try secret.json in multiple locations (Passenger may use different CWD)
+  const candidates = [
+    path.join(__dirname, '..', 'secret.json'),
+    path.join(__dirname, 'secret.json'),
+    path.join(process.cwd(), 'secret.json'),
+  ];
+  for (const p of candidates) {
+    try {
+      let raw = fs.readFileSync(p, 'utf8');
+      // Strip BOM if present (some editors/upload tools add it)
+      if (raw.charCodeAt(0) === 0xFEFF) {
+        raw = raw.slice(1);
+      }
+      const parsed = JSON.parse(raw);
+      if (parsed.KITASHARE_RELAY_SECRET) {
+        return parsed.KITASHARE_RELAY_SECRET;
+      }
+    } catch {}
+  }
+  // Last resort: random (tokens will mismatch with client)
+  return crypto.randomBytes(32).toString('hex');
+}
+
+const PUBLISHER_SECRET = loadPublisherSecret();
 
 export function generatePublisherToken(sessionId: string): string {
   return crypto.createHmac('sha256', PUBLISHER_SECRET).update(sessionId).digest('hex');
